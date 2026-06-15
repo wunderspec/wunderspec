@@ -1751,7 +1751,7 @@ wheels = [
 
 [[package]]
 name = "wunderspec"
-version = "0.128.6"
+version = "0.128.7"
 source = { editable = "." }
 dependencies = [
     { name = "executing" },
