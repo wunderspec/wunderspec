@@ -13,12 +13,12 @@ they become production incidents.
 
 This is **the open-core distribution**.
 
-> 📋 **Cheatsheet:** the [Wunderspec cheatsheet](docs/user-references/cheatsheet.html)
+> 📋 **Cheatsheet:** the [Wunderspec cheatsheet](https://github.com/wunderspec/wunderspec/blob/main/docs/user-references/cheatsheet.html)
 > summarizes the DSL and CLI on a single page — keep it open while you work.
 
 ## 1. Wunderspec in Action
 
-Follow Bob in [his Wunderspec adventure](docs/user-stories/bobs_log.md). There,
+Follow Bob in [his Wunderspec adventure](https://github.com/wunderspec/wunderspec/blob/main/docs/user-stories/bobs_log.md). There,
 Bob writes a specification of a write-ahead log, finds a bug, replays the
 counterexample and fixes the specification.
 
@@ -58,13 +58,14 @@ commands are not included in this package.
 
 ## 4. Release Provenance
 
-- Release tag: `v0.128.5`
-- Source commit: `0584fa3062273e8ff3c1aabc64e7e719e15f0a28`
+- Release tag: `v0.128.6`
+- Source commit: `74459d8fbc7cd1fd4f197e60d157ca7a94d8b226`
 
-See [tests/README.md](tests/README.md) for the development test log captured at
-release time.
+See [tests/README.md](https://github.com/wunderspec/wunderspec/blob/main/tests/README.md)
+for the development test log captured at release time.
 
 ## 5. License
 
 Wunderspec is distributed under the Functional Source License, Version 1.1, with
-an Apache 2.0 future license (FSL-1.1-ALv2). See [LICENSE](LICENSE).
+an Apache 2.0 future license (FSL-1.1-ALv2). See
+[LICENSE](https://github.com/wunderspec/wunderspec/blob/main/LICENSE).
