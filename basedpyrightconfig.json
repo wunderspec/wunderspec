@@ -1,0 +1,11 @@
+{
+  "include": ["tests/typing"],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "strict",
+  "reportAny": "error",
+  "reportExplicitAny": "none",
+  "reportMissingTypeStubs": "error",
+  "reportUntypedFunctionDecorator": "error",
+  "reportUnusedCallResult": "none",
+  "reportWildcardImportFromLibrary": "error"
+}

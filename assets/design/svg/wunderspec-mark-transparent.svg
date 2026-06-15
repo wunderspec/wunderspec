@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="wunderspec constellation W mark">
+  <title>wunderspec constellation W mark</title>
+
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#061426"/>
+      <stop offset="70%" stop-color="#020A17"/>
+      <stop offset="100%" stop-color="#000713"/>
+    </radialGradient>
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="lineGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrowAmber" markerWidth="2.8" markerHeight="2.8" refX="2.45" refY="1.4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L2.8,1.4 L0,2.8 Z" fill="#FFB22E"/>
+    </marker>
+    <marker id="arrowCyan" markerWidth="2.8" markerHeight="2.8" refX="2.45" refY="1.4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L2.8,1.4 L0,2.8 Z" fill="#7BE8F4"/>
+    </marker>
+    <style>
+      .wordmark { font-family: 'JetBrains Mono', 'SFMono-Regular', 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-weight: 500; letter-spacing: 0.18em; fill: #F8FBFF; }
+      .tagline { font-family: 'JetBrains Mono', 'SFMono-Regular', 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-weight: 400; letter-spacing: 0.08em; fill: #FFB22E; }
+      .tagline-muted { font-family: 'JetBrains Mono', 'SFMono-Regular', 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-weight: 400; letter-spacing: 0.08em; fill: #92A8C7; }
+      .small { font-family: 'JetBrains Mono', 'SFMono-Regular', 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-weight: 400; letter-spacing: 0.06em; fill: #92A8C7; }
+    </style>
+  </defs>
+
+  
+  
+  <g>
+    <path d="M 64.00 82.00 L 95.00 168.00 L 128.00 122.00 L 164.00 168.00" fill="none" stroke="#F8FBFF" stroke-width="5.00" stroke-linecap="round" stroke-linejoin="round" opacity="0.97" filter="url(#lineGlow)"/>
+    <path d="M 164.00 168.00 L 198.00 82.00" fill="none" stroke="#FFB22E" stroke-width="5.00" stroke-linecap="round" stroke-linejoin="round" filter="url(#lineGlow)"/>
+    <path d="M 189.16 104.36 L 190.33 117.73 L 179.17 113.31 Z" fill="#FFB22E" opacity="0.98" filter="url(#lineGlow)"/>
+    <circle cx="64.00" cy="82.00" r="10.50" fill="#FBFDFF" stroke="#EAF4FF" stroke-width="2.20" filter="url(#softGlow)"/>
+    <circle cx="95.00" cy="168.00" r="10.50" fill="#FBFDFF" stroke="#EAF4FF" stroke-width="2.20" filter="url(#softGlow)"/>
+    <circle cx="128.00" cy="122.00" r="10.50" fill="#FBFDFF" stroke="#EAF4FF" stroke-width="2.20" filter="url(#softGlow)"/>
+    <circle cx="164.00" cy="168.00" r="10.50" fill="#FFB22E" stroke="#EAF4FF" stroke-width="2.20" filter="url(#softGlow)"/>
+    <circle cx="198.00" cy="82.00" r="10.50" fill="#FBFDFF" stroke="#EAF4FF" stroke-width="2.20" filter="url(#softGlow)"/>
+    <circle cx="198.00" cy="82.00" r="15.50" fill="none" stroke="#FFD27A" stroke-width="3.00" opacity="0.85" filter="url(#softGlow)"/>
+  </g>
+
+</svg>

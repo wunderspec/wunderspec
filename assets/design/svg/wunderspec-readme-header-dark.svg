@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="640" viewBox="0 0 1600 640" role="img" aria-label="wunderspec README header">
+  <title>wunderspec README header</title>
+
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#061426"/>
+      <stop offset="70%" stop-color="#020A17"/>
+      <stop offset="100%" stop-color="#000713"/>
+    </radialGradient>
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="lineGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrowAmber" markerWidth="2.8" markerHeight="2.8" refX="2.45" refY="1.4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L2.8,1.4 L0,2.8 Z" fill="#FFB22E"/>
+    </marker>
+    <marker id="arrowCyan" markerWidth="2.8" markerHeight="2.8" refX="2.45" refY="1.4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L2.8,1.4 L0,2.8 Z" fill="#7BE8F4"/>
+    </marker>
+    <style>
+      .wordmark { font-family: 'JetBrains Mono', 'SFMono-Regular', 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-weight: 500; letter-spacing: 0.18em; fill: #F8FBFF; }
+      .tagline { font-family: 'JetBrains Mono', 'SFMono-Regular', 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-weight: 400; letter-spacing: 0.08em; fill: #FFB22E; }
+      .tagline-muted { font-family: 'JetBrains Mono', 'SFMono-Regular', 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-weight: 400; letter-spacing: 0.08em; fill: #92A8C7; }
+      .small { font-family: 'JetBrains Mono', 'SFMono-Regular', 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-weight: 400; letter-spacing: 0.06em; fill: #92A8C7; }
+    </style>
+  </defs>
+
+  
+  
+  <rect width="1600" height="640" rx="36" fill="url(#bgGlow)"/>
+  <circle cx="218" cy="320" r="156" fill="#061426" opacity="0.38"/>
+  <g transform="translate(58 160)">
+    <circle cx="160.00" cy="160.00" r="133.75" fill="none" stroke="#29435F" stroke-width="4.38" opacity="0.95"/>
+    <path d="M 72.50 90.00 A 115.00 115.00 0 0 1 235.00 67.50" fill="none" stroke="#7BE8F4" stroke-width="2.50" opacity="0.42" stroke-dasharray="10.00 10.00" marker-end="url(#arrowCyan)"/>
+    <path d="M 247.50 252.50 A 118.75 118.75 0 0 1 87.50 256.25" fill="none" stroke="#7BE8F4" stroke-width="2.50" opacity="0.22" stroke-dasharray="10.00 10.00"/>
+    <path d="M 80.00 102.50 L 118.75 210.00 L 160.00 152.50 L 205.00 210.00" fill="none" stroke="#F8FBFF" stroke-width="6.25" stroke-linecap="round" stroke-linejoin="round" opacity="0.97" filter="url(#lineGlow)"/>
+    <path d="M 205.00 210.00 L 247.50 102.50" fill="none" stroke="#FFB22E" stroke-width="6.25" stroke-linecap="round" stroke-linejoin="round" filter="url(#lineGlow)"/>
+    <path d="M 236.45 130.45 L 237.91 147.16 L 223.96 141.64 Z" fill="#FFB22E" opacity="0.98" filter="url(#lineGlow)"/>
+    <circle cx="80.00" cy="102.50" r="13.12" fill="#FBFDFF" stroke="#EAF4FF" stroke-width="2.75" filter="url(#softGlow)"/>
+    <circle cx="118.75" cy="210.00" r="13.12" fill="#FBFDFF" stroke="#EAF4FF" stroke-width="2.75" filter="url(#softGlow)"/>
+    <circle cx="160.00" cy="152.50" r="13.12" fill="#FBFDFF" stroke="#EAF4FF" stroke-width="2.75" filter="url(#softGlow)"/>
+    <circle cx="205.00" cy="210.00" r="13.12" fill="#FFB22E" stroke="#EAF4FF" stroke-width="2.75" filter="url(#softGlow)"/>
+    <circle cx="247.50" cy="102.50" r="13.12" fill="#FBFDFF" stroke="#EAF4FF" stroke-width="2.75" filter="url(#softGlow)"/>
+    <path d="M 272.50 62.50 L 278.12 74.38 L 290.00 80.00 L 278.12 85.62 L 272.50 97.50 L 266.88 85.62 L 255.00 80.00 L 266.88 74.38 Z" fill="#FFD27A" opacity="0.92" filter="url(#softGlow)"/>
+  </g>
+  <text x="445" y="288" class="wordmark" font-size="105">wunderspec</text>
+  <text x="456" y="376" class="tagline" font-size="44">Specs you code</text>
+  <text x="456" y="440" class="tagline-muted" font-size="30">Turn Python specs into explored state spaces.</text>
+  <path d="M 96 548 L 1504 548" stroke="#29435F" stroke-width="2" opacity="0.65"/>
+
+</svg>

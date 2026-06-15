@@ -1,0 +1,1484 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="../../assets/design/svg/wunderspec-icon-circle-dark.svg" />
+  <title>Wunderspec Cheatsheet</title>
+  <script>
+    (() => {
+      const choices = new Set(['auto', 'light', 'dark']);
+      let stored = 'auto';
+      try {
+        stored = localStorage.getItem('wunderspec-cheatsheet-theme') || 'auto';
+      } catch {
+        stored = 'auto';
+      }
+      const preference = choices.has(stored) ? stored : 'auto';
+      const systemTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      document.documentElement.dataset.theme = preference === 'auto' ? systemTheme : preference;
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --card: rgba(255,255,255,0.06);
+      --card2: rgba(255,255,255,0.08);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.70);
+      --faint: rgba(255,255,255,0.55);
+      --border: rgba(255,255,255,0.10);
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 18px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --accent: #7dd3fc;   /* light sky */
+      --accent2: #a7f3d0;  /* mint */
+      --danger: #fb7185;
+      --bg-grad-1: rgba(125,211,252,0.18);
+      --bg-grad-2: rgba(167,243,208,0.14);
+      --bg-grad-3: rgba(251,113,133,0.10);
+      --control-bg: rgba(255,255,255,0.05);
+      --control-bg-focus: rgba(255,255,255,0.06);
+      --control-bg-hover: rgba(255,255,255,0.07);
+      --control-border-hover: rgba(255,255,255,0.16);
+      --card-bg: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.045));
+      --card-header-border: rgba(255,255,255,0.08);
+      --item-bg: rgba(255,255,255,0.04);
+      --item-border: rgba(255,255,255,0.08);
+      --mark-bg: rgba(125,211,252,0.18);
+      --dot-shadow: rgba(125,211,252,0.18);
+    }
+
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f7f9fc;
+      --card: rgba(15,23,42,0.045);
+      --card2: rgba(15,23,42,0.065);
+      --text: rgba(15,23,42,0.94);
+      --muted: rgba(51,65,85,0.78);
+      --faint: rgba(71,85,105,0.66);
+      --border: rgba(15,23,42,0.13);
+      --shadow: 0 12px 28px rgba(15,23,42,0.10);
+      --accent: #0284c7;
+      --accent2: #059669;
+      --danger: #e11d48;
+      --bg-grad-1: rgba(14,165,233,0.15);
+      --bg-grad-2: rgba(16,185,129,0.12);
+      --bg-grad-3: rgba(244,63,94,0.08);
+      --control-bg: rgba(255,255,255,0.82);
+      --control-bg-focus: rgba(255,255,255,0.96);
+      --control-bg-hover: rgba(15,23,42,0.055);
+      --control-border-hover: rgba(15,23,42,0.22);
+      --card-bg: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.78));
+      --card-header-border: rgba(15,23,42,0.09);
+      --item-bg: rgba(248,250,252,0.84);
+      --item-border: rgba(15,23,42,0.09);
+      --mark-bg: rgba(14,165,233,0.18);
+      --dot-shadow: rgba(14,165,233,0.18);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 10% 5%, var(--bg-grad-1), transparent 60%),
+        radial-gradient(1000px 600px at 95% 15%, var(--bg-grad-2), transparent 55%),
+        radial-gradient(900px 700px at 30% 95%, var(--bg-grad-3), transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 18px 44px;
+    }
+
+    header {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      display: grid;
+      gap: 4px;
+      min-width: 260px;
+    }
+    .title h1 {
+      font-size: 20px;
+      margin: 0;
+      letter-spacing: 0.2px;
+    }
+    .title .sub {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--control-bg);
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px var(--dot-shadow);
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex: 1 1 420px;
+      justify-content: flex-end;
+      min-width: 280px;
+      flex-wrap: wrap;
+    }
+
+    .search {
+      position: relative;
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .theme-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--control-bg);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .theme-control label {
+      white-space: nowrap;
+    }
+
+    .theme-control select {
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+      min-height: 38px;
+    }
+
+    .theme-control:focus-within {
+      border-color: rgba(125,211,252,0.55);
+      box-shadow: 0 0 0 6px rgba(125,211,252,0.15);
+      background: var(--control-bg-focus);
+    }
+
+    .search input {
+      width: 100%;
+      padding: 12px 12px 12px 40px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--control-bg);
+      color: var(--text);
+      outline: none;
+      box-shadow: 0 0 0 0 rgba(125,211,252,0);
+      transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .search input:focus {
+      border-color: rgba(125,211,252,0.55);
+      box-shadow: 0 0 0 6px rgba(125,211,252,0.15);
+      background: var(--control-bg-focus);
+    }
+    .search .icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--faint);
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .btn {
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--control-bg);
+      color: var(--muted);
+      cursor: pointer;
+      transition: transform .06s ease, background .15s ease, border-color .15s ease;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--control-bg-hover); border-color: var(--control-border-hover); }
+    .btn:active { transform: translateY(1px); }
+    .btn strong { color: var(--text); font-weight: 600; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+      margin-top: 10px;
+    }
+
+    .card {
+      grid-column: span 6;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card header {
+      margin: 0;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--card-header-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .card h2 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0.2px;
+    }
+    .card .hint {
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .content {
+      padding: 12px 16px 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .item {
+      background: var(--item-bg);
+      border: 1px solid var(--item-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: grid;
+      gap: 6px;
+    }
+    .sig {
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.35;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .desc {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .alt {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .alt .sep {
+      font-size: 12px;
+      color: var(--faint);
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--item-bg);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    mark {
+      background: var(--mark-bg);
+      color: inherit;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+
+    .hidden { display: none !important; }
+
+    /* Responsive: stack cards nicely */
+    @media (max-width: 980px) {
+      .card { grid-column: span 12; }
+      .controls { justify-content: stretch; }
+    }
+
+    /* Print: clean, ink-friendly, multi-column */
+    @media print {
+        /* kill background + shadows */
+        body {
+            background: white !important;
+            color: #111;
+        }
+
+        .card {
+            box-shadow: none;
+            border: 1px solid #ddd;
+        }
+
+        /* hide UI */
+        header, .controls, .pill, .btn, .theme-control {
+            display: none !important;
+        }
+
+        /* MAGIC: newspaper layout */
+        .grid {
+            display: block;
+            column-count: 3;        /* try 2 or 3 depending on page */
+            column-gap: 14px;
+        }
+
+        .card {
+            break-inside: avoid;
+            margin-bottom: 10px;
+        }
+
+        /* tighten everything */
+        .content {
+            padding: 6px 8px;
+            gap: 4px;
+        }
+
+        .item {
+            padding: 4px 6px;
+            gap: 2px;
+        }
+
+        .sig {
+            font-size: 9pt;
+            line-height: 1.15;
+        }
+
+        .desc {
+            font-size: 8pt;
+            line-height: 1.15;
+        }
+
+        h2 {
+            font-size: 10pt;
+        }
+
+        body, .sig, .desc, h2, .hint {
+            color: #000 !important;
+        }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1>Wunderspec syntax (Python DSL)</h1>
+        <div class="sub">
+          <span class="pill"><span class="dot"></span> Interactive • Searchable • Printable</span>
+          <span class="pill">Focus: types, expressions, sets, maps, lists, records, tuples, unions, state machines, processes, temporal</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="theme-control">
+          <label for="theme">Theme</label>
+          <select id="theme" aria-label="Theme">
+            <option value="auto">Auto</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+        <div class="search">
+          <span class="icon">⌕</span>
+          <input id="q" type="search" placeholder="Search (e.g., StateVar, Param, Field, Map((k, v)), cache, inline=False…)" autocomplete="off" />
+        </div>
+        <button class="btn" id="clear" title="Clear search"><strong>Clear</strong></button>
+        <button class="btn" onclick="window.print()" title="Print"><strong>Print</strong></button>
+      </div>
+    </header>
+
+    <div class="grid" id="grid">
+      <!-- Basic constructs -->
+      <section class="card" data-title="false true integers strings enums literals val">
+        <header>
+          <h2>Basics</h2>
+          <span class="hint">Literals &amp; imports</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">from wunderspec import *</div>
+            <div class="desc">Import all definitions</div>
+          </div>
+          <div class="item">
+            <div class="sig">Val(False)   Val(True)</div>
+            <div class="desc">Boolean literals; Python <span class="sig">bool</span> auto-coerced in expressions</div>
+          </div>
+          <div class="item">
+            <div class="sig">Val(234)   Val(0xabcdef)</div>
+            <div class="desc">Integer literals; Python <span class="sig">int</span> auto-coerced in expressions</div>
+          </div>
+          <div class="item">
+            <div class="sig">Val("hello")</div>
+            <div class="desc">String literal; Python <span class="sig">str</span> auto-coerced in expressions</div>
+          </div>
+          <div class="item">
+            <div class="sig">Val(MyEnum.Foo)</div>
+            <div class="desc">Enum literal; enum member auto-coerced in expressions</div>
+          </div>
+          <div class="item">
+            <div class="sig">Var("x", int)   Var("s", MyRecord)</div>
+            <div class="desc">Symbolic variable of the given type/sort</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- types -->
+      <section class="card" data-title="basic types annotated sort StateVar Param Field Variant Unit">
+        <header>
+          <h2>Types / Sorts</h2>
+          <span class="hint">Used in StateVar[T], Param[T], Field[T], Variant[T] hints</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">bool, int, str</div>
+            <div class="desc">Booleans, big integers, strings</div>
+          </div>
+          <div class="item">
+            <div class="sig">MyEnum</div>
+            <div class="desc">Python <span class="sig">enum.Enum</span> subclass</div>
+          </div>
+          <div class="item">
+            <div class="sig">MyRecord</div>
+            <div class="desc">Class decorated with <span class="sig">@record</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">MyUnion</div>
+            <div class="desc">Class decorated with <span class="sig">@union</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">tuple[A, B, C]</div>
+            <div class="desc">Tuple of the given element types</div>
+          </div>
+          <div class="item">
+            <div class="sig">set[E]</div>
+            <div class="desc">Set with elements of type <span class="sig">E</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">dict[K, V]</div>
+            <div class="desc">Map from keys of type <span class="sig">K</span> to values of type <span class="sig">V</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">list[E]</div>
+            <div class="desc">List with elements of type <span class="sig">E</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Booleans -->
+      <section class="card" data-title="booleans and or not implies ite if then else">
+        <header>
+          <h2>Booleans</h2>
+          <span class="hint">BoolExpr</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="alt">
+              <span class="sig">And(p, q)</span>
+              <span class="sep">or</span>
+              <span class="sig">p &amp; q</span>
+              <span class="sep">or</span>
+              <span class="sig">p.and_(q)</span>
+            </div>
+            <div class="desc">Logical conjunction</div>
+          </div>
+          <div class="item">
+            <div class="alt">
+              <span class="sig">Or(p, q)</span>
+              <span class="sep">or</span>
+              <span class="sig">p | q</span>
+              <span class="sep">or</span>
+              <span class="sig">p.or_(q)</span>
+            </div>
+            <div class="desc">Logical disjunction</div>
+          </div>
+          <div class="item">
+            <div class="alt">
+              <span class="sig">Not(p)</span>
+              <span class="sep">or</span>
+              <span class="sig">~p</span>
+            </div>
+            <div class="desc">Logical negation</div>
+          </div>
+          <div class="item">
+            <div class="alt">
+              <span class="sig">Implies(p, q)</span>
+              <span class="sep">or</span>
+              <span class="sig">p.implies(q)</span>
+            </div>
+            <div class="desc">Implication: <span class="sig">p → q</span></div>
+          </div>
+          <div class="item">
+            <div class="alt">
+              <span class="sig">p == q</span>
+              <span class="sep">or</span>
+              <span class="sig">p != q</span>
+            </div>
+            <div class="desc">Boolean equality / inequality</div>
+          </div>
+          <div class="item">
+            <div class="sig">Ite(cond, then_expr, else_expr)</div>
+            <div class="desc">If-then-else expression; all three arguments are expressions</div>
+          </div>
+          <div class="item">
+            <div class="alt">
+              <span class="sig">p.if_(cond).else_(q)</span>
+            </div>
+            <div class="desc">Method-chain form of <span class="sig">Ite(cond, p, q)</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Integers -->
+      <section class="card" data-title="integers arithmetic comparisons interval upto inclusive integer set">
+        <header>
+          <h2>Integers</h2>
+          <span class="hint">IntExpr</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">x + y   x - y   x * y   x / y   x % y   x ** y</div>
+            <div class="desc">Arithmetic operators; division is integer division</div>
+          </div>
+          <div class="item">
+            <div class="sig">x == y   x != y   x &lt; y   x &lt;= y   x &gt; y   x &gt;= y</div>
+            <div class="desc">Comparison operators; return <span class="sig">BoolExpr</span></div>
+          </div>
+          <div class="item">
+            <div class="alt">
+              <span class="sig">Interval(lo, hi)</span>
+              <span class="sep">or</span>
+              <span class="sig">lo.upto(hi)</span>
+            </div>
+            <div class="desc">Inclusive integer set <span class="sig">{lo, …, hi}</span>; distinct from list <span class="sig">Range(start, end)</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sets -->
+      <section class="card" data-title="sets set contains in union intersect difference issubset subset superset map filter exists forall reduce subsets flatten flattened choose size is_empty Ints UnsignedInts interval upto">
+        <header>
+          <h2>Sets</h2>
+          <span class="hint">Immutable; may be infinite</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">Set(1, 2, 3)</div>
+            <div class="desc">New set with the given elements</div>
+          </div>
+          <div class="item">
+            <div class="sig">Set(1, ..., 4)</div>
+            <div class="desc">Shorthand: <span class="sig">Set(1, 2, 3, 4)</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Set(E)</div>
+            <div class="desc">Empty set whose elements have type <span class="sig">E</span></div>
+          </div>
+          <div class="item">
+            <div class="alt">
+                <span class="sig">S.contains(x)</span>
+                <span class="sep">or</span>
+                <span class="sig">x.in_(S)</span>
+            </div>
+            <div class="desc">True if <span class="sig">x ∈ S</span></div>
+          </div>
+          <div class="item">
+            <div class="alt">
+                <span class="sig">S | T</span>
+                <span class="sep">or</span>
+                <span class="sig">S.union(T)</span>
+            </div>
+            <div class="desc">Union: elements in <span class="sig">S</span> or <span class="sig">T</span></div>
+          </div>
+          <div class="item">
+            <div class="alt">
+                <span class="sig">S &amp; T</span>
+                <span class="sep">or</span>
+                <span class="sig">S.intersect(T)</span>
+            </div>
+            <div class="desc">Intersection: elements in both</div>
+          </div>
+          <div class="item">
+            <div class="alt">
+                <span class="sig">S - T</span>
+                <span class="sep">or</span>
+                <span class="sig">S.difference(T)</span>
+            </div>
+            <div class="desc">Difference: in <span class="sig">S</span> but not in <span class="sig">T</span></div>
+          </div>
+          <div class="item">
+            <div class="alt">
+                <span class="sig">S &lt;= T</span>
+                <span class="sep">or</span>
+                <span class="sig">S.issubset(T)</span>
+            </div>
+            <div class="desc">True if <span class="sig">S ⊆ T</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">S &lt; T   S &gt;= T   S &gt; T</div>
+            <div class="desc">Proper subset, superset, and proper superset predicates</div>
+          </div>
+          <div class="item">
+            <div class="sig">S.exists(lambda x: P(x))</div>
+            <div class="desc">True if some element satisfies <span class="sig">P</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">S.forall(lambda x: P(x))</div>
+            <div class="desc">True if every element satisfies <span class="sig">P</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">S.filter(lambda x: P(x))</div>
+            <div class="desc">New set: elements satisfying <span class="sig">P</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">S.map(lambda x: f(x))</div>
+            <div class="desc">New set: image of <span class="sig">S</span> under <span class="sig">f</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">S.map_to(lambda x: f(x))</div>
+            <div class="desc">New map binding each <span class="sig">x ∈ S</span> to <span class="sig">f(x)</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">S.reduce(lambda acc, x: acc + x, i)</div>
+            <div class="desc">Fold over elements in some order; <span class="sig">i</span> is the initial value</div>
+          </div>
+          <div class="item">
+            <div class="sig">S.choose(lambda x: P(x))</div>
+            <div class="desc">Pick one element satisfying <span class="sig">P</span> (deterministic)</div>
+          </div>
+          <div class="item">
+            <div class="sig">S.size</div>
+            <div class="desc">Cardinality (finite sets only)</div>
+          </div>
+          <div class="item">
+            <div class="sig">S.is_empty</div>
+            <div class="desc">True when <span class="sig">S</span> has no elements</div>
+          </div>
+          <div class="item">
+            <div class="sig">S.flattened</div>
+            <div class="desc">Union of all sets in <span class="sig">S</span> (⋃ S)</div>
+          </div>
+          <div class="item">
+            <div class="alt">
+                <span class="sig">Ints</span>
+                <span class="sep">or</span>
+                <span class="sig">UnsignedInts</span>
+            </div>
+            <div class="desc">All signed / unsigned integers (infinite sets)</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quantifiers / generator forms -->
+      <section class="card" data-title="quantifiers forall exists filter map mapto generator comprehension">
+        <header>
+          <h2>Quantifiers &amp; comprehensions</h2>
+          <span class="hint">Generator-expression style</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">Forall(P(x) for x in S)</div>
+            <div class="desc">∀ x ∈ S : P(x) — equivalent to <span class="sig">S.forall(lambda x: P(x))</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Exists(P(x) for x in S)</div>
+            <div class="desc">∃ x ∈ S : P(x) — equivalent to <span class="sig">S.exists(lambda x: P(x))</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Forall(P(x,y) for x in S for y in T)</div>
+            <div class="desc">Multiple binders — ranges over the Cartesian product</div>
+          </div>
+          <div class="item">
+            <div class="sig">Forall(P(x) for x in lst)</div>
+            <div class="desc">Over a list: binds <span class="sig">x</span> to each element in order — same as <span class="sig">lst.forall(lambda x: P(x))</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">SetIf(P(x) for x in S)</div>
+            <div class="desc">{ x ∈ S : P(x) } — equivalent to <span class="sig">S.filter(lambda x: P(x))</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Set(f(x) for x in S)</div>
+            <div class="desc">{ f(x) : x ∈ S } — image set; equivalent to <span class="sig">S.map(lambda x: f(x))</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Map(f(x) for x in domain)</div>
+            <div class="desc">[ x ↦ f(x) ] — map expression; equivalent to <span class="sig">domain.map_to(lambda x: f(x))</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Lists -->
+      <section class="card" data-title="lists List range size append replace slice filter reduce keys is_empty">
+        <header>
+          <h2>Lists</h2>
+          <span class="hint">Ordered, 0-based, immutable</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">List(1, 2, 3)</div>
+            <div class="desc">New list with the given elements in order</div>
+          </div>
+          <div class="item">
+            <div class="sig">List(E)</div>
+            <div class="desc">Empty list with elements of type <span class="sig">E</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Range(start, end)</div>
+            <div class="desc">New list: <span class="sig">[start, start+1, …, end-1]</span> (end-exclusive)</div>
+          </div>
+          <div class="item">
+            <div class="sig">lst[i]</div>
+            <div class="desc">Element at index <span class="sig">i</span> (0-based)</div>
+          </div>
+          <div class="item">
+            <div class="alt">
+                <span class="sig">lst[s:e]</span>
+                <span class="sep">or</span>
+                <span class="sig">lst[s:]</span>
+                <span class="sep">or</span>
+                <span class="sig">lst[:e]</span>
+            </div>
+            <div class="desc">Slice <span class="sig">[lst[s], …, lst[e-1]]</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">lst1 + lst2</div>
+            <div class="desc">Concatenation</div>
+          </div>
+          <div class="item">
+            <div class="sig">lst + List(x)</div>
+            <div class="desc">New list with <span class="sig">x</span> added at the end (single-element concatenation; there is no <span class="sig">append</span> method)</div>
+          </div>
+          <div class="item">
+            <div class="sig">lst.replace(i, x)</div>
+            <div class="desc">New list with element at index <span class="sig">i</span> replaced by <span class="sig">x</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">lst.filter(lambda x: x &gt; 5)</div>
+            <div class="desc">New list: elements satisfying the condition</div>
+          </div>
+          <div class="item">
+            <div class="sig">lst.reduce(lambda acc, x: acc + x, initial)</div>
+            <div class="desc">Ordered left fold; <span class="sig">initial</span> is the starting accumulator</div>
+          </div>
+          <div class="item">
+            <div class="sig">lst.exists(lambda x: P(x))</div>
+            <div class="desc">True if some element satisfies <span class="sig">P</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">lst.forall(lambda x: P(x))</div>
+            <div class="desc">True if every element satisfies <span class="sig">P</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">lst.size</div>
+            <div class="desc">Number of elements</div>
+          </div>
+          <div class="item">
+            <div class="sig">lst.is_empty</div>
+            <div class="desc">True when <span class="sig">lst</span> has no elements</div>
+          </div>
+          <div class="item">
+            <div class="sig">lst.keys</div>
+            <div class="desc">Set of valid indices: <span class="sig">Set(0, 1, …, size-1)</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Maps -->
+      <section class="card" data-title="maps map_to keys get replace insert size is_empty edit mapto explicit pairs constructor">
+        <header>
+          <h2>Maps (dictionaries)</h2>
+          <span class="hint">Immutable key/value bindings</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">Map(K, V)</div>
+            <div class="desc">Empty map from type <span class="sig">K</span> to type <span class="sig">V</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Map((k1, v1), (k2, v2), ...)</div>
+            <div class="desc">Explicit finite map; literals are auto-coerced and sorts are inferred from the first pair</div>
+          </div>
+          <div class="item">
+            <div class="sig">MapTo(f(x) for x in domain)</div>
+            <div class="desc">Map binding each element of <span class="sig">domain</span> to <span class="sig">f(x)</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">M[key]</div>
+            <div class="desc">Look up value for <span class="sig">key</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">M.insert(k, v)</div>
+            <div class="desc">New map with <span class="sig">k → v</span> added or updated</div>
+          </div>
+          <div class="item">
+            <div class="sig">M.replace(k, v)</div>
+            <div class="desc">New map with <span class="sig">k → v</span> updated (<span class="sig">k</span> must exist)</div>
+          </div>
+          <div class="item">
+            <div class="sig">M.keys</div>
+            <div class="desc">Set of all keys (domain)</div>
+          </div>
+          <div class="item">
+            <div class="sig">M.size</div>
+            <div class="desc">Number of entries</div>
+          </div>
+          <div class="item">
+            <div class="sig">M.is_empty</div>
+            <div class="desc">True when <span class="sig">M</span> has no entries</div>
+          </div>
+          <div class="item">
+            <div class="sig">upd = M.edit(); upd[k] = v; M2 = upd.result</div>
+            <div class="desc">Multi-key functional update; <span class="sig">.result</span> returns the new map</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Records -->
+      <section class="card" data-title="records fields Field record replace edit anonymous shadow name sort node tag result internal namespace underscore">
+        <header>
+          <h2>Records</h2>
+          <span class="hint">from wunderspec import Field, record</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">Record(x=Val(1), y=Val(True))</div>
+            <div class="desc">Anonymous record</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+@record
+class Point:
+    x: Field[int]
+    y: Field[int]
+            </div>
+            <div class="desc">Named record type</div>
+          </div>
+          <div class="item">
+            <div class="sig">Point(x=3, y=4)</div>
+            <div class="desc">Construct a record (all fields required; Python literals auto-coerced)</div>
+          </div>
+          <div class="item">
+            <div class="sig">r.x   r["x"]</div>
+            <div class="desc">Field access via dot or subscript</div>
+          </div>
+          <div class="item">
+            <div class="sig">r.name   r.replace   r._.replace(...)   upd._.result</div>
+            <div class="desc">Record fields win over expression API names; use <span class="sig">._</span> for hidden methods or metadata such as <span class="sig">r._.sort</span> and <span class="sig">r._.node</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">r.replace(x=Val(10))</div>
+            <div class="desc">New record with the named field(s) changed</div>
+          </div>
+          <div class="item">
+            <div class="sig">upd = r.edit(); upd.x = Val(5); r2 = upd.result</div>
+            <div class="desc">Deep nested update; <span class="sig">.result</span> returns the new record</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tuples -->
+      <section class="card" data-title="tuples tuple replace unpack">
+        <header>
+          <h2>Tuples</h2>
+          <span class="hint">Heterogeneous, 0-based, immutable</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">Tuple("alice", 2025, True)</div>
+            <div class="desc">New tuple (auto-coercion applies)</div>
+          </div>
+          <div class="item">
+            <div class="sig">t[0]   t[1]   t[2]</div>
+            <div class="desc">Element access (0-based)</div>
+          </div>
+          <div class="item">
+            <div class="sig">(a, b, c) = t</div>
+            <div class="desc">Python unpacking into symbolic variables</div>
+          </div>
+          <div class="item">
+            <div class="sig">t.replace(1, Val(2026))</div>
+            <div class="desc">New tuple with element at the given index replaced</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Unions -->
+      <section class="card" data-title="unions union variant tag match option result">
+        <header>
+          <h2>Unions</h2>
+          <span class="hint">from wunderspec import Variant, Unit, union</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">
+@union
+class Result:
+    Ok:  Variant[int]
+    Err: Variant[str]
+            </div>
+            <div class="desc">Declare a union type; each field is a variant</div>
+          </div>
+          <div class="item">
+            <div class="sig">Result.Ok(Val(42))   Result.Err(Val("oops"))</div>
+            <div class="desc">Construct a variant</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+@union
+class Flag:
+    Set_:  Variant[Unit]
+    Unset: Variant[Unit]
+            </div>
+            <div class="desc">No-payload variant: use <span class="sig">Variant[Unit]</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Flag.Set_()   Flag.Unset()</div>
+            <div class="desc">Construct a no-payload variant</div>
+          </div>
+          <div class="item">
+            <div class="sig">v.tag</div>
+            <div class="desc">String expression holding the active variant name</div>
+          </div>
+          <div class="item">
+            <div class="sig">v.match(Ok=lambda n: n * Val(2), Err=lambda s: Val(-1))</div>
+            <div class="desc">Exhaustive pattern match — every variant must be handled</div>
+          </div>
+          <div class="item">
+            <div class="sig">v.match(Ok=lambda n: n, default=Val(0))</div>
+            <div class="desc">Non-exhaustive match with a default fallback</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- All-sets -->
+      <section class="card" data-title="all subsets maps tuples records powerset">
+        <header>
+          <h2>All-sets</h2>
+          <span class="hint">Higher-order set constructors</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">AllSubsets(S)</div>
+            <div class="desc">Power set of <span class="sig">S</span>: all subsets</div>
+          </div>
+          <div class="item">
+            <div class="sig">AllMaps(keys, values)</div>
+            <div class="desc">All total maps from <span class="sig">keys</span> to <span class="sig">values</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">AllTuples(S1, S2, ...)</div>
+            <div class="desc">Cartesian product S1 × S2 × …</div>
+          </div>
+          <div class="item">
+            <div class="sig">AllRecords(x=S1, y=S2)</div>
+            <div class="desc">All records where each field ranges over its set</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Decorators / definitions -->
+      <section class="card" data-title="decorators expr record union state action invariant example instance coverage temporal with_flow cache_args pure coerce inline">
+        <header>
+          <h2>Decorators</h2>
+          <span class="hint">Classify functions and classes</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">@expr</div>
+            <div class="desc">Symbolic helper function with auto-coercion and <span class="sig">LET</span>-binding</div>
+          </div>
+          <div class="item">
+            <div class="sig">@expr(cache_args=False)   @expr(pure=True)</div>
+            <div class="desc">Skip argument <span class="sig">LET</span>-aliases, or reject state-like arguments for pure helpers</div>
+          </div>
+          <div class="item">
+            <div class="sig">@expr(coerce=False)   @expr(inline=False)</div>
+            <div class="desc">Require <span class="sig">Expr</span> inputs/outputs, or extract the helper as a named TLA+ operator</div>
+          </div>
+          <div class="item">
+            <div class="sig">@record</div>
+            <div class="desc">Named record type</div>
+          </div>
+          <div class="item">
+            <div class="sig">@union</div>
+            <div class="desc">Tagged union type</div>
+          </div>
+          <div class="item">
+            <div class="sig">@state</div>
+            <div class="desc">State schema (variables + parameters) for a machine</div>
+          </div>
+          <div class="item">
+            <div class="sig">@action   @action(init=True)   @action(inline=False)   @action(coerce=False)</div>
+            <div class="desc">Transition action; <span class="sig">init</span> marks init; <span class="sig">inline=False</span> is required for fairness/Enabled; <span class="sig">coerce=False</span> requires Expr arguments</div>
+          </div>
+          <div class="item">
+            <div class="sig">@invariant</div>
+            <div class="desc">Safety predicate — must hold in every reachable state</div>
+          </div>
+          <div class="item">
+            <div class="sig">@example</div>
+            <div class="desc">Reachability predicate — checker searches for a state where it holds</div>
+          </div>
+          <div class="item">
+            <div class="sig">@temporal</div>
+            <div class="desc">Liveness property returning a <span class="sig">TemporalExpr</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">@instance</div>
+            <div class="desc">Zero-arg factory returning a concrete <span class="sig">@state</span> with parameters set</div>
+          </div>
+          <div class="item">
+            <div class="sig">@coverage</div>
+            <div class="desc">State-shape function for coverage tracking during fuzzing / model checking</div>
+          </div>
+          <div class="item">
+            <div class="sig">@with_flow</div>
+            <div class="desc">Imperative if/else expression builder (see flow section)</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- State machine -->
+      <section class="card" style="grid-column:span 12" data-title="state machine action context one_of alternatives split assume cache Param StateVar PARAMETER StateFieldType UPSERT direct assignment nested editing atomic">
+        <header>
+          <h2>State machines</h2>
+          <span class="hint">from wunderspec import Param, StateVar, Context, MachineStateBase, action, instance, invariant, state</span>
+        </header>
+        <div class="content" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="item">
+            <div class="sig">
+@state
+class S(MachineStateBase):
+    N:   Param[int]
+    ctr: StateVar[int]
+            </div>
+            <div class="desc"><span class="sig">Param[T]</span> marks a constant; <span class="sig">StateVar[T]</span> marks a mutable variable. The underlying <span class="sig">Annotated[...]</span> form is still accepted.</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+@action(init=True)
+def init(c: Context[S]):
+    c.state.ctr = Val(0)
+            </div>
+            <div class="desc">Initialisation action: sets all variables to starting values</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+@action
+def step(c: Context[S]):
+    alts = iter(c.alternatives("up", "down"))
+    with next(alts): ...   # up branch
+    with next(alts): ...   # down branch
+            </div>
+            <div class="desc">Step action: <span class="sig">c.alternatives()</span> declares mutually exclusive branches</div>
+          </div>
+          <div class="item">
+            <div class="sig">c.state.x = Val(1)</div>
+            <div class="desc">Assign a variable (at most once per transition)</div>
+          </div>
+          <div class="item">
+            <div class="sig">c.assume(condition)</div>
+            <div class="desc">Guard: prune this branch if <span class="sig">condition</span> is false</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+with c.one_of(S, "x") as x:
+    c.state.y = x
+            </div>
+            <div class="desc">Non-deterministic choice from set <span class="sig">S</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">(then_, else_) = c.split(condition)</div>
+            <div class="desc">Branch on a boolean condition</div>
+          </div>
+          <div class="item">
+            <div class="sig">cached = c.cache(expr, name="cached")</div>
+            <div class="desc">Bind a reused symbolic subexpression to a fresh local name</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+c.state.pc[q] = Val(PC.CS)
+c.state.req[p][q] = Val(0)
+c.state.chan.val = d
+            </div>
+            <div class="desc">Direct nested update — map entry, nested path, or record field (immediate)</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+old_x, old_y = s.x, s.y
+s.x = old_y
+s.y = old_x
+            </div>
+            <div class="desc">Read the pre-update ("old") state under direct assignment: snapshot it in a local before assigning (state expressions are immutable). This swaps correctly; <span class="sig">s.x = s.y; s.y = s.x</span> would not.</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+with c.state.editing() as upd:
+    upd.x = c.state.y
+    upd.y = c.state.x
+            </div>
+            <div class="desc">Escape hatch that snapshots automatically across a block (reads see the pre-update state). Equivalent to capturing locals; reach for it only when several interdependent fields make manual snapshots awkward.</div>
+          </div>
+          <div class="item">
+            <div class="sig">balances: StateVar[dict[str, int], UPSERT]</div>
+            <div class="desc">Mark a map field so keyed assignment inserts missing keys (insert-or-update)</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Explicit program counters -->
+      <section class="card" style="grid-column:span 12" data-title="explicit program counter pluscal Param StateVar pc alternatives one_of assume direct assignment bakery dekker multiple processes">
+        <header>
+          <h2>Explicit program counters</h2>
+          <span class="hint">Recommended replacement for the old process-builder style</span>
+        </header>
+        <div class="content" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="item">
+            <div class="sig">
+@state
+class S(MachineStateBase):
+    N:    Param[int]
+    pc:   StateVar[dict[int, PC]]
+    flag: StateVar[dict[int, bool]]
+    num:  StateVar[dict[int, int]]
+            </div>
+            <div class="desc">For multiple symmetric processes, store the program counter and process-local variables as map-valued <span class="sig">StateVar</span> fields indexed by process id. This is the style used by <span class="sig">examples/bakery.py</span>.</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+def procs(s): return Set(Val(1), ..., s.N)
+
+@action(init=True)
+def Init(c):
+    s, ps = c.state, procs(c.state)
+    s.pc = ps.map_to(lambda _: Val(PC.NCS))
+    s.flag = ps.map_to(lambda _: Val(False))
+            </div>
+            <div class="desc">Initialize every process id explicitly with <span class="sig">map_to</span>. There is no generated process initialization helper.</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+@action(inline=True)
+def p(c, q):
+    s = c.state
+    alts = iter(c.alternatives(*(pc.name for pc in PROCESS_PCS)))
+            </div>
+            <div class="desc">Write one ordinary action helper for a single process id. Choose among its possible program-counter cases with <span class="sig">c.alternatives(...)</span>.</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+alts = iter(c.alternatives("NCS", "E1"))
+
+with next(alts):
+    c.assume(s.pc[q] == PC.NCS)
+    s.pc[q] = Val(PC.E1)
+            </div>
+            <div class="desc">Each branch starts with a guard on the current program counter. Assign the next counter explicitly instead of using <span class="sig">goto</span> or fallthrough.</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+with c.one_of(s.unchecked[q], "i") as i:
+    s.nxt[q] = i
+    c.assume(~s.flag[s.nxt[q]])
+    s.pc[q] = Val(PC.W2)
+            </div>
+            <div class="desc">Use <span class="sig">c.one_of(...)</span> directly in the branch for nondeterministic values. Parameters and variables are read from <span class="sig">c.state</span>.</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+with next(alts):
+    c.assume(s.pc[q] == PC.W2)
+    s.unchecked[q] -= Set(s.nxt[q])
+    s.pc[q] = Val(PC.W1)
+            </div>
+            <div class="desc">A branch can contain multiple assignments. Set <span class="sig">pc[q]</span> to the next control state when the atomic step is done.</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+@action
+def Next(c):
+    with c.one_of(procs(c.state), "q") as q:
+        p(c, q)
+            </div>
+            <div class="desc">Choose the process id explicitly in the top-level step. The worker step is just another action helper.</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+@action(inline=True)
+def kv_step(c):
+    s = c.state
+    c.assume(s.pc == PC.Wait)
+    s.pc = Val(PC.Sync)
+            </div>
+            <div class="desc">For a single-process machine, use the same pattern with a scalar <span class="sig">pc: StateVar[PC]</span>.</div>
+          </div>
+          <div class="item">
+            <div class="sig">
+examples/bakery.py
+examples/dekker.py
+            </div>
+            <div class="desc">Reference examples for explicit program-counter state machines. Prefer this pattern over generator-based process specifications.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sub-machines -->
+      <section class="card" data-title="submachine instance with composition field mapping SubMachine">
+        <header>
+          <h2>Sub-machines</h2>
+          <span class="hint">from wunderspec.submachine import SubMachine</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">
+InChan = SubMachine(Data="Message", chan="cin")
+            </div>
+            <div class="desc">Map sub-spec fields to parent fields (TLA⁺ <span class="sig">INSTANCE … WITH</span>)</div>
+          </div>
+          <div class="item">
+            <div class="sig">channel.init(InChan(c))</div>
+            <div class="desc">Wrap context <span class="sig">c</span> so sub-spec actions read/write parent fields</div>
+          </div>
+          <div class="item">
+            <div class="sig">channel.type_inv(InChan.view(s))</div>
+            <div class="desc">Read-only view of state <span class="sig">s</span> with mapped field names (for invariants)</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Temporal -->
+      <section class="card" data-title="temporal always eventually enabled weakfair strongfair liveness safety action_expr forall exists fairness">
+        <header>
+          <h2>Temporal expressions</h2>
+          <span class="hint">TemporalExpr — used in @temporal properties</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">Always(P)</div>
+            <div class="desc">□P — <span class="sig">P</span> holds in every state of the execution</div>
+          </div>
+          <div class="item">
+            <div class="sig">Eventually(P)</div>
+            <div class="desc">◇P — <span class="sig">P</span> holds in some future state</div>
+          </div>
+          <div class="item">
+            <div class="sig">AndT(t1, t2)   OrT(t1, t2)   NotT(t)   ImpliesT(t1, t2)</div>
+            <div class="desc">Temporal connectives; Boolean arguments are lifted to <span class="sig">TemporalExpr</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Enabled(my_action, arg)</div>
+            <div class="desc">True if <span class="sig">my_action</span> can fire; requires <span class="sig">@action(inline=False)</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Enabled(action_expr)</div>
+            <div class="desc">Direct action-expression form of <span class="sig">ENABLED A</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">WeakFair(my_action, arg, vars=("x",))</div>
+            <div class="desc">WF — if action is continuously enabled it must eventually fire</div>
+          </div>
+          <div class="item">
+            <div class="sig">StrongFair(my_action, arg, vars=("x",))</div>
+            <div class="desc">SF — if action is enabled infinitely often it must eventually fire</div>
+          </div>
+          <div class="item">
+            <div class="sig">Forall(WeakFair(send, p, vars=("msgs",)) for p in PROCS)</div>
+            <div class="desc">Temporal quantification over a parameter set</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Imperative flow -->
+      <section class="card" data-title="flow with_flow if else return end imperative conditional">
+        <header>
+          <h2>Imperative flow builder</h2>
+          <span class="hint">from wunderspec.flow import flow, with_flow</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">
+@with_flow
+def f(x: Expr, y: Expr) -> Expr:
+    with flow.if_(x &gt; y):
+        flow.return_(x)
+    flow.return_(y)
+    return flow.end()
+            </div>
+            <div class="desc">Builds an <span class="sig">Ite</span> expression imperatively; sequential <span class="sig">with flow.if_</span> blocks chain as if/elif/else</div>
+          </div>
+          <div class="item">
+            <div class="sig">flow.if_(cond)</div>
+            <div class="desc">Open a conditional branch (use as <span class="sig">with flow.if_(cond):</span>)</div>
+          </div>
+          <div class="item">
+            <div class="sig">flow.else_()</div>
+            <div class="desc">Explicit else branch after a completed <span class="sig">if_</span> block (optional)</div>
+          </div>
+          <div class="item">
+            <div class="sig">flow.return_(expr)</div>
+            <div class="desc">Set the value for the current branch</div>
+          </div>
+          <div class="item">
+            <div class="sig">return flow.end()</div>
+            <div class="desc">Assemble the final expression (always the last statement)</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const themeSelect = document.getElementById('theme');
+    const input = document.getElementById('q');
+    const clearBtn = document.getElementById('clear');
+    const cards = Array.from(document.querySelectorAll('.card'));
+    const themeQuery = window.matchMedia('(prefers-color-scheme: light)');
+    const themeStorageKey = 'wunderspec-cheatsheet-theme';
+    const themeChoices = new Set(['auto', 'light', 'dark']);
+    let activeThemePreference = 'auto';
+
+    function readStoredTheme() {
+      try {
+        return localStorage.getItem(themeStorageKey);
+      } catch {
+        return null;
+      }
+    }
+
+    function writeStoredTheme(preference) {
+      try {
+        localStorage.setItem(themeStorageKey, preference);
+      } catch {
+        // The selector should still work for the current page session.
+      }
+    }
+
+    function storedThemePreference() {
+      const preference = readStoredTheme() || 'auto';
+      return themeChoices.has(preference) ? preference : 'auto';
+    }
+
+    function resolvedTheme(preference) {
+      if (preference === 'auto') return themeQuery.matches ? 'light' : 'dark';
+      return preference;
+    }
+
+    function applyTheme(preference) {
+      activeThemePreference = themeChoices.has(preference) ? preference : 'auto';
+      document.documentElement.dataset.theme = resolvedTheme(activeThemePreference);
+      themeSelect.value = activeThemePreference;
+      writeStoredTheme(activeThemePreference);
+    }
+
+    function escapeRegExp(s) {
+      return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function highlight(el, q) {
+      // restore original text if we already highlighted before
+      const nodes = el.querySelectorAll('[data-orig]');
+      nodes.forEach(n => { n.textContent = n.getAttribute('data-orig'); n.removeAttribute('data-orig'); });
+
+      if (!q) return;
+
+      const re = new RegExp(escapeRegExp(q), 'ig');
+      const targets = el.querySelectorAll('.sig, .desc, h2, .hint');
+      targets.forEach(t => {
+        const txt = t.textContent;
+        if (!re.test(txt)) return;
+        t.setAttribute('data-orig', txt);
+        // rebuild with <mark>
+        let out = '';
+        let last = 0;
+        re.lastIndex = 0;
+        for (let m; (m = re.exec(txt)); ) {
+          out += txt.slice(last, m.index) + '<mark>' + txt.slice(m.index, m.index + m[0].length) + '</mark>';
+          last = m.index + m[0].length;
+          if (m[0].length === 0) break;
+        }
+        out += txt.slice(last);
+        t.innerHTML = out;
+      });
+    }
+
+    function applyFilter() {
+      const q = input.value.trim().toLowerCase();
+      cards.forEach(card => {
+        // unhighlight first (per-card)
+        highlight(card, '');
+
+        if (!q) {
+          card.classList.remove('hidden');
+          return;
+        }
+
+        const hay = (
+          card.getAttribute('data-title') + ' ' +
+          card.textContent
+        ).toLowerCase();
+
+        const show = hay.includes(q);
+        card.classList.toggle('hidden', !show);
+
+        if (show) highlight(card, q);
+      });
+    }
+
+    input.addEventListener('input', applyFilter);
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      applyFilter();
+      input.focus();
+    });
+
+    themeSelect.addEventListener('change', () => {
+      applyTheme(themeSelect.value);
+    });
+
+    themeQuery.addEventListener('change', () => {
+      if (activeThemePreference === 'auto') applyTheme('auto');
+    });
+
+    // keyboard: Ctrl/Cmd+K focuses search
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        input.focus();
+      }
+    });
+
+    applyTheme(storedThemePreference());
+  </script>
+</body>
+</html>

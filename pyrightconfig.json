@@ -1,0 +1,30 @@
+{
+  "include": ["tests/typing"],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "strict",
+  "reportWildcardImportFromLibrary": "error",
+  "reportMissingTypeStubs": "error",
+  "reportUntypedFunctionDecorator": "error",
+  "reportUnknownArgumentType": "error",
+  "reportUnknownLambdaType": "error",
+  "reportUnknownMemberType": "error",
+  "reportUnknownParameterType": "error",
+  "reportUnknownVariableType": "error",
+  // Example specs are teaching code, not the strictly-typed API surface, so the
+  // editor checks them with the strict-only "must be fully annotated" rules
+  // disabled (real type errors still surface). extraPaths keeps `wunderspec`
+  // resolving as local source rather than a third-party library under this root.
+  "executionEnvironments": [
+    {
+      "root": "examples",
+      "extraPaths": ["."],
+      "reportUntypedFunctionDecorator": "none",
+      "reportUnknownArgumentType": "none",
+      "reportUnknownLambdaType": "none",
+      "reportUnknownMemberType": "none",
+      "reportUnknownParameterType": "none",
+      "reportUnknownVariableType": "none",
+      "reportMissingParameterType": "none"
+    }
+  ]
+}

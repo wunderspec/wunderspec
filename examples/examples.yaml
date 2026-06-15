@@ -1,0 +1,69 @@
+examples:
+  - file: channel.py
+    instances: inst01 inst012
+    invariants: type_invariant
+  - file: fifo.py
+    instances: inst01 inst012
+    invariants: type_invariant
+  - file: kv_store.py
+    instances: tiny small
+  - file: payment.py
+    instances: tiny
+    invariants: no_double_charge no_overdraft type_invariant
+    examples: some_compensated
+    example_run_seeds:
+      some_compensated: 1
+  - file: bakery.py
+    instances: n3
+  - file: dekker.py
+    instances: default
+    invariants: mutual_exclusion
+  - file: lamport_mutex.py
+    instances: n2_max_clock5
+  - file: epfd.py
+    instances: n3
+    invariants: type_ok
+  - file: readers_writers.py
+    instances: inst2 inst3
+  - file: simple_wal1.py
+    instances: small3
+    invariants: []
+  - file: simple_wal2.py
+    instances: small3
+    invariants: kv_mem_matches_log
+  - file: simple_ponzi_machine.py
+  - file: two_phase.py
+    instances: n2
+    examples: some_aborted all_aborted some_committed all_committed
+    example_run_seeds:
+      some_committed: 63
+      all_committed: 89
+    example_run_max_samples:
+      some_committed: 300
+      all_committed: 300
+  - file: fpaxos.py
+    instances: two_acceptors three_acceptors
+  - file: sliding_puzzles.py
+  - file: tiny_workers.py
+    instances: workers_2 workers_3
+  - file: producer_consumer.py
+    instances: small medium
+    invariants: non_negative capacity_bound type_invariant
+  - file: minimmit.py
+    instances: n6_t1_f0
+    invariants: agreement
+  - file: ben_or.py
+    instances: n6t1f0 n6t1f1 n6t1f2
+    invariants: assumptions_hold type_ok agreement_inv
+    spec:
+      - init: init
+        step: step
+      - init: init_with_faults
+        step: step
+  - file: ledger.py
+    instances: tiny_ledger
+    invariants: no_total_change
+    timeout: 30
+    examples: ledger_3_entries
+    example_run_seeds:
+      ledger_3_entries: 4389388959391973243

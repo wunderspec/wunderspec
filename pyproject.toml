@@ -1,0 +1,94 @@
+[project]
+name = "wunderspec"
+version = "0.128.3"
+description = "Protocol specifications as Python code"
+authors = [
+    {name = "Igor Konnov"},
+    {name = "Thomas Pani"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "executing>=2.0,<3.0",
+    "itf-py>=0.5.0,<0.6.0",
+    "pyrsistent>=0.20.0,<0.21.0",
+    "pyyaml>=6.0.2,<7.0.0",
+    "tqdm>=4.67.3,<5.0.0",
+    "typing-extensions>=4.0.0,<5.0.0",
+    "wadler-lindig>=0.1.7,<0.2.0",
+]
+
+[project.scripts]
+wunderspec = "wunderspec.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.27,<2.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["wunderspec"]
+
+[dependency-groups]
+dev = [
+    "black>=24.0.0,<25.0.0",
+    "basedpyright>=1.39.0,<2.0.0",
+    "flake8>=7.0.0,<8.0.0",
+    "hypothesis>=6.151.2,<7.0.0",
+    "isort>=5.0.0,<6.0.0",
+    "markdown-pytest>=0.3.2,<0.4.0",
+    "mypy>=1.0.0,<2.0.0",
+    "pyright>=1.1.400,<2.0.0",
+    "pytest>=9.0.2,<10.0.0",
+    "pytest-codeblocks>=0.17.0,<0.18.0",
+    "pytest-cov>=6.0.0,<7.0.0",
+]
+demo = [
+    "build>=1.2.2,<2.0.0",
+    "jupyter-server>=2.17.0,<3.0.0",
+    "jupyterlite-core>=0.7.2,<0.8.0",
+    "jupyterlite-pyodide-kernel>=0.7.2,<0.8.0",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+# Per-module options for tests
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+# mypy cannot find IPython types in CI, ignore them
+[[tool.mypy.overrides]]
+module = ["IPython.lib.pretty.*"]
+ignore_missing_imports = true
+
+# rich is an optional dependency (used only via the __rich__ protocol), not
+# installed in CI, so treat it as a typed-unavailable third-party dependency.
+[[tool.mypy.overrides]]
+module = ["rich", "rich.*"]
+ignore_missing_imports = true
+
+# itf-py currently has no py.typed marker, so treat it as a typed-unavailable
+# third-party dependency instead of failing with import-untyped.
+[[tool.mypy.overrides]]
+module = ["itf_py", "itf_py.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tqdm", "tqdm.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["wadler_lindig", "wadler_lindig.*"]
+ignore_missing_imports = true
