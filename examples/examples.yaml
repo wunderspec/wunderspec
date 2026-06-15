@@ -49,6 +49,9 @@ examples:
   - file: producer_consumer.py
     instances: small medium
     invariants: non_negative capacity_bound type_invariant
+  - file: sloppy_counter.py
+    instances: n2_batch3_8bit n4_batch4_8bit
+    invariants: accounting local_shards_bounded approximation_bound
   - file: minimmit.py
     instances: n6_t1_f0
     invariants: agreement

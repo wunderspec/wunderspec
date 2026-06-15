@@ -357,7 +357,8 @@ def run_apalache(request: ApalacheRequest, reporter: Reporter) -> ApalacheResult
                             vars=list(state_cls._vars),
                         )
                     )
-                _print_trace(trace, reporter)
+                if not request.no_print_trace:
+                    _print_trace(trace, reporter)
                 written += 1
 
         outcome_kind: Literal[

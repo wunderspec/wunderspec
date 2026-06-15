@@ -222,6 +222,7 @@ class TlcRequest:
     max_findings: int = 1
     out_itf: str | Path | None = None
     max_memory: str | None = None
+    no_print_trace: bool = False
 
 
 @dataclass(frozen=True)
@@ -254,6 +255,7 @@ class ApalacheRequest:
     max_findings: int = 1
     out_itf: str | Path | None = None
     max_memory: str | None = None
+    no_print_trace: bool = False
 
 
 @dataclass(frozen=True)
@@ -287,6 +289,7 @@ class RunRequest:
     coverage: str | None = None
     timeout: float | None = None
     best_trace: bool | None = None
+    no_print_trace: bool = False
 
 
 @dataclass(frozen=True)
@@ -399,6 +402,7 @@ class FuzzRequest:
     no_energy: bool = False
     corpus_dir: str | Path | None = None
     timeout: float | None = None
+    no_print_trace: bool = False
 
 
 @dataclass(frozen=True)
@@ -1206,6 +1210,8 @@ def _search_command_for_run(request: RunRequest, seed: int) -> str:
         args.extend(["--timeout", str(request.timeout)])
     if request.best_trace is not None:
         args.extend(["--best-trace", "1" if request.best_trace else "0"])
+    if request.no_print_trace:
+        args.append("--no-print-trace")
     args.append(str(request.spec))
     return " ".join(shlex.quote(arg) for arg in args)
 
@@ -1872,7 +1878,8 @@ def run(request: RunRequest, reporter: Reporter | None = None) -> RunResult:
                             progress.clear()
                             rpt.out(_predicate_message(predicate, i))
                             rpt.out(f"Trace seed: {trace_seed}")
-                            _print_trace(t[: i + 1], rpt)
+                            if not request.no_print_trace:
+                                _print_trace(t[: i + 1], rpt)
                             rpt.out(
                                 "Replay with: "
                                 f"{_replay_command_for_run(request, trace_seed)}"
@@ -1987,7 +1994,8 @@ def run(request: RunRequest, reporter: Reporter | None = None) -> RunResult:
     if best_trace_enabled and best_trace_seed is not None:
         rpt.out(f"Best trace seed: {best_trace_seed}")
         rpt.out(f"Best trace length: {len(best_trace)}")
-        _print_trace(best_trace, rpt)
+        if not request.no_print_trace:
+            _print_trace(best_trace, rpt)
         rpt.out(f"Replay with: {_replay_command_for_run(request, best_trace_seed)}")
 
     return RunResult(

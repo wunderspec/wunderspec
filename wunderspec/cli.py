@@ -130,6 +130,14 @@ def _add_run_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_no_print_trace_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--no-print-trace",
+        action="store_true",
+        help="Suppress human-readable trace printing for findings",
+    )
+
+
 def _configure_colors(no_color: bool, reporter: ConsoleReporter) -> None:
     is_tty = reporter.out_file.isatty()
     reporter.use_color = not no_color and is_tty
@@ -162,6 +170,7 @@ def _run_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
             coverage=args.coverage,
             timeout=args.timeout,
             best_trace=(None if args.best_trace is None else bool(args.best_trace)),
+            no_print_trace=args.no_print_trace,
         ),
         reporter=reporter,
     )
@@ -242,6 +251,7 @@ def _with_tlc_command(args: argparse.Namespace, reporter: ConsoleReporter) -> No
             max_findings=args.max_findings,
             out_itf=args.out_itf,
             max_memory=args.max_memory,
+            no_print_trace=args.no_print_trace,
         ),
         reporter=reporter,
     )
@@ -277,6 +287,7 @@ def _with_apalache_command(args: argparse.Namespace, reporter: ConsoleReporter) 
             max_findings=args.max_findings,
             out_itf=args.out_itf,
             max_memory=args.max_memory,
+            no_print_trace=args.no_print_trace,
         ),
         reporter=reporter,
     )
@@ -334,7 +345,8 @@ def _check_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
         for i, trace in enumerate(result.traces):
             if count > 1:
                 reporter.out(f"--- {noun.capitalize()} {i + 1} of {count} ---")
-            print_trace(trace, reporter, style=style)
+            if not args.no_print_trace:
+                print_trace(trace, reporter, style=style)
             if i < len(result.schedule_paths):
                 reporter.out(
                     f"Replay with: "
@@ -373,6 +385,7 @@ def _fuzz_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
             no_energy=args.no_energy,
             corpus_dir=args.corpus_dir,
             timeout=args.timeout,
+            no_print_trace=args.no_print_trace,
         ),
         reporter=reporter,
     )
@@ -639,6 +652,7 @@ def main() -> None:
         action="store_true",
         help="Disable colored output",
     )
+    _add_no_print_trace_arg(tlc_parser)
 
     apalache_parser = subparsers.add_parser(
         "with-apalache",
@@ -731,6 +745,7 @@ def main() -> None:
         action="store_true",
         help="Disable colored output",
     )
+    _add_no_print_trace_arg(apalache_parser)
 
     run_parser = subparsers.add_parser(
         "run",
@@ -775,6 +790,7 @@ def main() -> None:
             "0 otherwise)"
         ),
     )
+    _add_no_print_trace_arg(run_parser)
 
     replay_parser = subparsers.add_parser(
         "replay",
@@ -903,6 +919,7 @@ def main() -> None:
         action="store_true",
         help="Disable colored output",
     )
+    _add_no_print_trace_arg(check_parser)
 
     fuzz_parser = subparsers.add_parser(
         "fuzz",
@@ -979,6 +996,7 @@ def main() -> None:
         metavar="SECONDS",
         help="Stop fuzzing after this many seconds",
     )
+    _add_no_print_trace_arg(fuzz_parser)
 
     lint_parser = subparsers.add_parser(
         "lint",

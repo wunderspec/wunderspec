@@ -440,7 +440,8 @@ def run_tlc(request: TlcRequest, reporter: Reporter) -> TlcResult:
                         vars=list(state_cls._vars),
                     )
                 )
-            _print_trace(trace_result.trace, reporter)
+            if not request.no_print_trace:
+                _print_trace(trace_result.trace, reporter)
         # Key the outcome off whether a counterexample was found rather than the
         # exit code: with ``-continue`` TLC explores the whole state space and
         # exits 0 even when it reported violations.

@@ -1,6 +1,6 @@
 [project]
 name = "wunderspec"
-version = "0.128.7"
+version = "0.129.1"
 description = "Protocol specifications as Python code"
 authors = [
     {name = "Igor Konnov"},
@@ -38,7 +38,7 @@ dev = [
     "markdown-pytest>=0.3.2,<0.4.0",
     "mypy>=1.0.0,<2.0.0",
     "pyright>=1.1.400,<2.0.0",
-    "pytest>=9.0.2,<10.0.0",
+    "pytest>=8.0.0,<9.0.0",
     "pytest-codeblocks>=0.17.0,<0.18.0",
     "pytest-cov>=6.0.0,<7.0.0",
 ]

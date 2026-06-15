@@ -2,13 +2,13 @@
 
 The unit tests from the Wunderspec development repository are omitted from this
 public distribution to keep the package focused. The full development
-`make test` suite currently collects 2346 tests.
+`make test` suite currently collects 2350 tests.
 
 ## Release Provenance
 
-- Release tag: `v0.128.7`
-- Source commit: `ad5ef3606668d6720f41fc18dbb1cd86c682cbd7`
-- Test log captured at: `2026-06-15T17:27:12Z`
+- Release tag: `v0.129.1`
+- Source commit: `604d6a23a444006bb67b14e0728df07711d3facb`
+- Test log captured at: `2026-06-15T21:08:25Z`
 - `make test` exit code: `0`
 
 ## Full Test Log From the Development Repository
@@ -16,11 +16,11 @@ public distribution to keep the package focused. The full development
 ```text
 cd . && uv run pytest
 ============================= test session starts ==============================
-platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+platform linux -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0
 rootdir: /home/runner/work/wunderspec-dev/wunderspec-dev/release-source
 configfile: pyproject.toml
-plugins: pytest_codeblocks-0.17.0, hypothesis-6.152.8, cov-6.3.0, markdown-pytest-0.3.2
-collected 2346 items
+plugins: pytest_codeblocks-0.17.0, subtests-0.15.0, hypothesis-6.155.2, cov-6.3.0, markdown-pytest-0.3.2
+collected 2350 items
 
 docs/user-references/booleans.md .                                       [  0%]
 docs/user-references/comprehensions.md .                                 [  0%]
@@ -41,15 +41,15 @@ examples/test_simple_ponzi_machine.py ..                                 [  0%]
 tests/test_action_coercion.py ..                                         [  0%]
 tests/test_action_execute.py ......                                      [  1%]
 tests/test_api.py ...s..s............................................... [  3%]
-........                                                                 [  3%]
+..........                                                               [  3%]
 tests/test_ast_properties.py ..................                          [  4%]
-tests/test_ast_record.py ...................................             [  5%]
+tests/test_ast_record.py ...................................             [  6%]
 tests/test_ast_terms.py ................................................ [  8%]
 ....................................................                     [ 10%]
 tests/test_ast_tuple.py .................................                [ 11%]
 tests/test_cache.py .............................                        [ 12%]
 tests/test_cli.py ...................................................... [ 15%]
-.....ssssss.............................................                 [ 17%]
+......ssssss..............................................               [ 17%]
 tests/test_conditional.py ..............                                 [ 18%]
 tests/test_direct_pc_examples.py .                                       [ 18%]
 tests/test_enabled_eval.py ............                                  [ 18%]
@@ -66,13 +66,13 @@ tests/test_interpreter_enums.py ...............                          [ 28%]
 tests/test_interpreter_errors.py ....                                    [ 28%]
 tests/test_interpreter_integers.py ..................................... [ 30%]
 .....                                                                    [ 30%]
-tests/test_interpreter_let.py ..............                             [ 30%]
+tests/test_interpreter_let.py ..............                             [ 31%]
 tests/test_interpreter_lists.py ........................................ [ 32%]
 ...................................................................      [ 35%]
 tests/test_interpreter_map.py .......................................... [ 37%]
                                                                          [ 37%]
 tests/test_interpreter_quantifiers.py .............................      [ 38%]
-tests/test_interpreter_record.py .................................       [ 39%]
+tests/test_interpreter_record.py .................................       [ 40%]
 tests/test_interpreter_sampling.py ..................................... [ 41%]
 ..                                                                       [ 41%]
 tests/test_interpreter_sets.py ......................................... [ 43%]
@@ -92,7 +92,7 @@ tests/test_lang_integers.py ................................             [ 60%]
 tests/test_lang_lists.py ............................................... [ 62%]
 .....................................                                    [ 63%]
 tests/test_lang_literals.py ..............                               [ 64%]
-tests/test_lang_maps.py ....................................             [ 65%]
+tests/test_lang_maps.py ....................................             [ 66%]
 tests/test_lang_record.py ................................               [ 67%]
 tests/test_lang_sets.py ................................................ [ 69%]
 ........................................................................ [ 72%]
@@ -124,5 +124,5 @@ tests/test_tla.py ...................................................... [ 94%]
 tests/test_tlc_trace.py ....                                             [ 98%]
 tests/test_trace_output.py .........................                     [100%]
 
-====================== 2335 passed, 11 skipped in 27.59s =======================
+====================== 2339 passed, 11 skipped in 25.79s =======================
 ```

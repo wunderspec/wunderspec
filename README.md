@@ -58,8 +58,8 @@ commands are not included in this package.
 
 ## 4. Release Provenance
 
-- Release tag: `v0.128.7`
-- Source commit: `ad5ef3606668d6720f41fc18dbb1cd86c682cbd7`
+- Release tag: `v0.129.1`
+- Source commit: `604d6a23a444006bb67b14e0728df07711d3facb`
 
 See [tests/README.md](https://github.com/wunderspec/wunderspec/blob/main/tests/README.md)
 for the development test log captured at release time.
