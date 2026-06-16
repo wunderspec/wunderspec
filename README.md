@@ -2,6 +2,12 @@
 
 # Wunderspec
 
+[![PyPI](https://img.shields.io/pypi/v/wunderspec.svg)](https://pypi.org/project/wunderspec/)
+[![Lint](https://github.com/wunderspec/wunderspec/actions/workflows/lint.yml/badge.svg)](https://github.com/wunderspec/wunderspec/actions/workflows/lint.yml)
+[![Build](https://github.com/wunderspec/wunderspec/actions/workflows/build.yml/badge.svg)](https://github.com/wunderspec/wunderspec/actions/workflows/build.yml)
+[![Run Examples](https://github.com/wunderspec/wunderspec/actions/workflows/run-examples.yml/badge.svg)](https://github.com/wunderspec/wunderspec/actions/workflows/run-examples.yml)
+[![Convert to TLA+](https://github.com/wunderspec/wunderspec/actions/workflows/convert-to-tla.yml/badge.svg)](https://github.com/wunderspec/wunderspec/actions/workflows/convert-to-tla.yml)
+
 Wunderspec is a Python DSL for writing and checking executable specifications.
 
 Distributed systems often fail due to unforeseen issues: message reordering,
@@ -13,27 +19,37 @@ they become production incidents.
 
 This is **the open-core distribution**.
 
-> 📋 **Cheatsheet:** the [Wunderspec cheatsheet](https://github.com/wunderspec/wunderspec/blob/main/docs/user-references/cheatsheet.html)
-> summarizes the DSL and CLI on a single page — keep it open while you work.
+> 📋 **Wunderspec in 5 minutes:** the [Wunderspec in Five Minutes][five-minutes]
+> gives you a quick overview of the core concepts.
+
+> 📋 **Cheatsheet:** the [Wunderspec cheatsheet][cheatsheet]
+> summarizes the DSL and CLI in a few pages — keep it open while you work.
 
 ## 1. Wunderspec in Action
 
-Follow Bob in [his Wunderspec adventure](https://github.com/wunderspec/wunderspec/blob/main/docs/user-stories/bobs_log.md). There,
-Bob writes a specification of a write-ahead log, finds a bug, replays the
-counterexample and fixes the specification.
+Follow Bob in [his Wunderspec adventure][bobs_log].  There, Bob writes a
+specification of a write-ahead log, finds a bug, replays the counterexample and
+fixes the specification.
 
 ## 2. Installation
 
-Using [uv](https://docs.astral.sh/uv/):
+Using [uv][]:
 
 ```sh
-uv add wunderspec
+uv tool install wunderspec
 ```
 
 After installation, the CLI is available:
 
 ```sh
 wunderspec --help
+```
+
+If you want to add Wunderspec as a dependency, just type:
+
+```sh
+uv add wunderspec
+uv sync
 ```
 
 ## 3. Features
@@ -58,14 +74,19 @@ commands are not included in this package.
 
 ## 4. Release Provenance
 
-- Release tag: `v0.129.3`
-- Source commit: `b21d0bd6cd54d3e259e418626727410c4875ac0b`
+- Release tag: `v0.129.5`
+- Source commit: `8561aecba08feb12e97117b0c7632ad83e9d8076`
 
-See [tests/README.md](https://github.com/wunderspec/wunderspec/blob/main/tests/README.md)
-for the development test log captured at release time.
+See [tests/README.md][] for the development test log captured at release time.
 
 ## 5. License
 
 Wunderspec is distributed under the Functional Source License, Version 1.1, with
-an Apache 2.0 future license (FSL-1.1-ALv2). See
-[LICENSE](https://github.com/wunderspec/wunderspec/blob/main/LICENSE).
+an Apache 2.0 future license (FSL-1.1-ALv2). See [LICENSE][].
+
+[cheatsheet]: https://github.com/wunderspec/wunderspec/blob/main/docs/user-references/cheatsheet.html
+[Wunderspec in Five Minutes]: https://github.com/wunderspec/wunderspec/blob/main/docs/user-references/wunderspec-one-pager.md
+[bobs_log]: https://github.com/wunderspec/wunderspec/blob/main/docs/user-stories/bobs_log.md
+[uv]: https://docs.astral.sh/uv/
+[tests/README.md]: https://github.com/wunderspec/wunderspec/blob/main/tests/README.md
+[LICENSE]: https://github.com/wunderspec/wunderspec/blob/main/LICENSE

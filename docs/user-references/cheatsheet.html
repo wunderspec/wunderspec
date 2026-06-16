@@ -548,14 +548,12 @@
             <div class="desc">Boolean equality / inequality</div>
           </div>
           <div class="item">
-            <div class="sig">Ite(cond, then_expr, else_expr)</div>
-            <div class="desc">If-then-else expression; all three arguments are expressions</div>
-          </div>
-          <div class="item">
             <div class="alt">
+              <span class="sig">Ite(cond, then_expr, else_expr)</span>
+              <span class="sep">or</span>
               <span class="sig">p.if_(cond).else_(q)</span>
-            </div>
-            <div class="desc">Method-chain form of <span class="sig">Ite(cond, p, q)</span></div>
+	    </div>
+            <div class="desc">If-then-else expression; all three arguments are expressions</div>
           </div>
         </div>
       </section>
@@ -576,12 +574,16 @@
             <div class="desc">Comparison operators; return <span class="sig">BoolExpr</span></div>
           </div>
           <div class="item">
-            <div class="alt">
-              <span class="sig">Interval(lo, hi)</span>
-              <span class="sep">or</span>
-              <span class="sig">lo.upto(hi)</span>
-            </div>
+            <span class="sig">Set(lo, ..., hi)</span>
             <div class="desc">Inclusive integer set <span class="sig">{lo, …, hi}</span>; distinct from list <span class="sig">Range(start, end)</span></div>
+          </div>
+          <div class="item">
+            <div class="alt">
+                <span class="sig">Ints</span>
+                <span class="sep">or</span>
+                <span class="sig">UnsignedInts</span>
+            </div>
+            <div class="desc">All signed / unsigned integers (infinite sets)</div>
           </div>
         </div>
       </section>
@@ -594,16 +596,16 @@
         </header>
         <div class="content">
           <div class="item">
-            <div class="sig">Set(1, 2, 3)</div>
-            <div class="desc">New set with the given elements</div>
+            <div class="sig">Set(2, 5, 8, 8)</div>
+            <div class="desc">New set with the given elements, duplicates ignored</div>
           </div>
           <div class="item">
-            <div class="sig">Set(1, ..., 4)</div>
-            <div class="desc">Shorthand: <span class="sig">Set(1, 2, 3, 4)</span></div>
+            <div class="sig">Set(lo, ..., hi)</div>
+            <div class="desc">Inclusive integer set <span class="sig">{lo, …, hi}</span></div>
           </div>
           <div class="item">
             <div class="sig">Set(E)</div>
-            <div class="desc">Empty set whose elements have type <span class="sig">E</span></div>
+            <div class="desc">Empty set whose elements have sort <span class="sig">E</span></div>
           </div>
           <div class="item">
             <div class="alt">
@@ -746,12 +748,12 @@
         </header>
         <div class="content">
           <div class="item">
-            <div class="sig">List(1, 2, 3)</div>
-            <div class="desc">New list with the given elements in order</div>
+            <div class="sig">List(2, 3, 3, 4)</div>
+            <div class="desc">New list with the given elements in order, duplicates allowed</div>
           </div>
           <div class="item">
             <div class="sig">List(E)</div>
-            <div class="desc">Empty list with elements of type <span class="sig">E</span></div>
+            <div class="desc">Empty list with elements of sort <span class="sig">E</span></div>
           </div>
           <div class="item">
             <div class="sig">Range(start, end)</div>
@@ -835,7 +837,7 @@
           </div>
           <div class="item">
             <div class="sig">M[key]</div>
-            <div class="desc">Look up value for <span class="sig">key</span></div>
+            <div class="desc">Look up value for <span class="sig">key</span> (<span class="sig">key</span> must exist)</div>
           </div>
           <div class="item">
             <div class="sig">M.insert(k, v)</div>
@@ -1069,6 +1071,49 @@ class Flag:
         </div>
       </section>
 
+      <!-- Temporal -->
+      <section class="card" data-title="temporal always eventually enabled weakfair strongfair liveness safety action_expr forall exists fairness">
+        <header>
+          <h2>Temporal expressions</h2>
+          <span class="hint">TemporalExpr — used in @temporal properties</span>
+        </header>
+        <div class="content">
+          <div class="item">
+            <div class="sig">Always(P)</div>
+            <div class="desc">□P — <span class="sig">P</span> holds in every state of the execution</div>
+          </div>
+          <div class="item">
+            <div class="sig">Eventually(P)</div>
+            <div class="desc">◇P — <span class="sig">P</span> holds in some future state</div>
+          </div>
+          <div class="item">
+            <div class="sig">AndT(t1, t2)   OrT(t1, t2)   NotT(t)   ImpliesT(t1, t2)</div>
+            <div class="desc">Temporal connectives; Boolean arguments are lifted to <span class="sig">TemporalExpr</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Enabled(my_action, arg)</div>
+            <div class="desc">True if <span class="sig">my_action</span> can fire; requires <span class="sig">@action(inline=False)</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Enabled(action_expr)</div>
+            <div class="desc">Direct action-expression form of <span class="sig">ENABLED A</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">WeakFair(my_action, arg, vars=("x",))</div>
+            <div class="desc">WF — if action is continuously enabled it must eventually fire</div>
+          </div>
+          <div class="item">
+            <div class="sig">StrongFair(my_action, arg, vars=("x",))</div>
+            <div class="desc">SF — if action is enabled infinitely often it must eventually fire</div>
+          </div>
+          <div class="item">
+            <div class="sig">Forall(WeakFair(send, p, vars=("msgs",)) for p in PROCS)</div>
+            <div class="desc">Temporal quantification over a parameter set</div>
+          </div>
+        </div>
+      </section>
+
+
       <!-- State machine -->
       <section class="card" style="grid-column:span 12" data-title="state machine action context one_of alternatives split assume cache Param StateVar PARAMETER StateFieldType UPSERT direct assignment nested editing atomic">
         <header>
@@ -1273,48 +1318,6 @@ InChan = SubMachine(Data="Message", chan="cin")
           <div class="item">
             <div class="sig">channel.type_inv(InChan.view(s))</div>
             <div class="desc">Read-only view of state <span class="sig">s</span> with mapped field names (for invariants)</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Temporal -->
-      <section class="card" data-title="temporal always eventually enabled weakfair strongfair liveness safety action_expr forall exists fairness">
-        <header>
-          <h2>Temporal expressions</h2>
-          <span class="hint">TemporalExpr — used in @temporal properties</span>
-        </header>
-        <div class="content">
-          <div class="item">
-            <div class="sig">Always(P)</div>
-            <div class="desc">□P — <span class="sig">P</span> holds in every state of the execution</div>
-          </div>
-          <div class="item">
-            <div class="sig">Eventually(P)</div>
-            <div class="desc">◇P — <span class="sig">P</span> holds in some future state</div>
-          </div>
-          <div class="item">
-            <div class="sig">AndT(t1, t2)   OrT(t1, t2)   NotT(t)   ImpliesT(t1, t2)</div>
-            <div class="desc">Temporal connectives; Boolean arguments are lifted to <span class="sig">TemporalExpr</span></div>
-          </div>
-          <div class="item">
-            <div class="sig">Enabled(my_action, arg)</div>
-            <div class="desc">True if <span class="sig">my_action</span> can fire; requires <span class="sig">@action(inline=False)</span></div>
-          </div>
-          <div class="item">
-            <div class="sig">Enabled(action_expr)</div>
-            <div class="desc">Direct action-expression form of <span class="sig">ENABLED A</span></div>
-          </div>
-          <div class="item">
-            <div class="sig">WeakFair(my_action, arg, vars=("x",))</div>
-            <div class="desc">WF — if action is continuously enabled it must eventually fire</div>
-          </div>
-          <div class="item">
-            <div class="sig">StrongFair(my_action, arg, vars=("x",))</div>
-            <div class="desc">SF — if action is enabled infinitely often it must eventually fire</div>
-          </div>
-          <div class="item">
-            <div class="sig">Forall(WeakFair(send, p, vars=("msgs",)) for p in PROCS)</div>
-            <div class="desc">Temporal quantification over a parameter set</div>
           </div>
         </div>
       </section>

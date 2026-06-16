@@ -500,19 +500,23 @@ def main() -> None:
 
     convert_parser = subparsers.add_parser(
         "convert",
-        help="Convert a Wunderspec module to another format",
+        help="Convert Wunderspec to TLA+ or Quint to Wunderspec",
+        description=(
+            "Convert a Wunderspec .py module to TLA+ .tla, "
+            "or a Quint .qnt module to Wunderspec .py."
+        ),
     )
     convert_parser.add_argument(
         "--from",
         dest="source",
         required=True,
-        help="Source Python file containing the Wunderspec module",
+        help="Source specification file: Wunderspec .py or Quint .qnt",
     )
     convert_parser.add_argument(
         "--to",
         dest="output",
         required=True,
-        help="Output file path (e.g., output.tla)",
+        help="Output file path: .tla for Wunderspec input, .py for Quint input",
     )
     convert_parser.add_argument(
         "--defs",
@@ -524,7 +528,9 @@ def main() -> None:
         "--instance",
         default=None,
         help="Name of a partially specialized state object in the source module "
-        "(e.g., proto5). Generates an MC*_<Base> wrapper with fixed constants and INSTANCE.",
+        "(e.g., proto5). Applies only to Wunderspec-to-TLA+ conversion; "
+        "ignored for Quint input. Generates an MC*_<Base> wrapper with fixed "
+        "constants and INSTANCE.",
     )
     convert_parser.add_argument(
         "--text-width",

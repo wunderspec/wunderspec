@@ -15,6 +15,7 @@ from wunderspec import (
     Exists,
     Expr,
     Field,
+    Forall,
     List,
     Map,
     Param,
@@ -394,12 +395,12 @@ def type_invariant(s: PaymentState) -> BoolExpr:
 
 @invariant
 def no_overdraft(s: PaymentState) -> BoolExpr:
-    return accounts(s).forall(lambda account: s.balance[account] >= 0)
+    return Forall(s.balance[account] >= 0 for account in accounts(s))
 
 
 @invariant
 def no_double_charge(s: PaymentState) -> BoolExpr:
-    return s.Txn.forall(lambda txn: event_count(s, txn, CHARGED) <= Val(1))
+    return Forall(event_count(s, txn, CHARGED) <= Val(1) for txn in s.Txn)
 
 
 @invariant
