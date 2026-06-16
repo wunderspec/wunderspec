@@ -2,13 +2,13 @@
 
 The unit tests from the Wunderspec development repository are omitted from this
 public distribution to keep the package focused. The full development
-`make test` suite currently collects 2354 tests.
+`make test` suite currently collects 2355 tests.
 
 ## Release Provenance
 
-- Release tag: `v0.129.5`
-- Source commit: `8561aecba08feb12e97117b0c7632ad83e9d8076`
-- Test log captured at: `2026-06-16T19:14:56Z`
+- Release tag: `v0.129.6`
+- Source commit: `ab0a7ebd149ec98095c87f190c8c43616c1df187`
+- Test log captured at: `2026-06-16T19:21:00Z`
 - `make test` exit code: `0`
 
 ## Full Test Log From the Development Repository
@@ -20,7 +20,7 @@ platform linux -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0
 rootdir: /home/runner/work/wunderspec-dev/wunderspec-dev/release-source
 configfile: pyproject.toml
 plugins: pytest_codeblocks-0.17.0, subtests-0.15.0, hypothesis-6.155.2, cov-6.3.0, markdown-pytest-0.3.2
-collected 2354 items
+collected 2355 items
 
 docs/user-references/booleans.md .                                       [  0%]
 docs/user-references/comprehensions.md .                                 [  0%]
@@ -112,7 +112,7 @@ tests/test_quint_translation_manifest.py .....                           [ 87%]
 tests/test_random_walk_replay.py .....                                   [ 87%]
 tests/test_random_walk_seeds.py ....                                     [ 87%]
 tests/test_record_decorator.py ............                              [ 88%]
-tests/test_release_distribution.py ...........                           [ 88%]
+tests/test_release_distribution.py ............                          [ 88%]
 tests/test_schedule_enumerator.py ...................                    [ 89%]
 tests/test_serialization.py ......                                       [ 89%]
 tests/test_source_tracking.py .............                              [ 90%]
@@ -124,5 +124,5 @@ tests/test_tla.py ...................................................... [ 94%]
 tests/test_tlc_trace.py ....                                             [ 98%]
 tests/test_trace_output.py .........................                     [100%]
 
-====================== 2343 passed, 11 skipped in 22.31s =======================
+====================== 2344 passed, 11 skipped in 25.62s =======================
 ```

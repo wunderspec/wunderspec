@@ -74,8 +74,8 @@ commands are not included in this package.
 
 ## 4. Release Provenance
 
-- Release tag: `v0.129.5`
-- Source commit: `8561aecba08feb12e97117b0c7632ad83e9d8076`
+- Release tag: `v0.129.6`
+- Source commit: `ab0a7ebd149ec98095c87f190c8c43616c1df187`
 
 See [tests/README.md][] for the development test log captured at release time.
 
@@ -85,7 +85,7 @@ Wunderspec is distributed under the Functional Source License, Version 1.1, with
 an Apache 2.0 future license (FSL-1.1-ALv2). See [LICENSE][].
 
 [cheatsheet]: https://github.com/wunderspec/wunderspec/blob/main/docs/user-references/cheatsheet.html
-[Wunderspec in Five Minutes]: https://github.com/wunderspec/wunderspec/blob/main/docs/user-references/wunderspec-one-pager.md
+[five-minutes]: https://github.com/wunderspec/wunderspec/blob/main/docs/user-references/wunderspec-five-minutes.md
 [bobs_log]: https://github.com/wunderspec/wunderspec/blob/main/docs/user-stories/bobs_log.md
 [uv]: https://docs.astral.sh/uv/
 [tests/README.md]: https://github.com/wunderspec/wunderspec/blob/main/tests/README.md
