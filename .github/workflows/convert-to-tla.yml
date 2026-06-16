@@ -1,0 +1,78 @@
+name: Convert to TLA+
+
+env:
+  APALACHE_VERSION: "0.57.0"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  convert-to-tla:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v8.1.0
+      with:
+        enable-cache: true
+        cache-suffix: convert-to-tla
+
+    - name: Install project
+      run: uv sync --locked
+
+    - name: Set up Java
+      uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Cache tla2tools.jar
+      id: cache-tla2tools
+      uses: actions/cache@v5
+      with:
+        path: tla2tools.jar
+        key: tla2tools-v1.8.0
+
+    - name: Download tla2tools.jar
+      if: steps.cache-tla2tools.outputs.cache-hit != 'true'
+      run: wget -q https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+
+    - name: Cache Apalache
+      id: cache-apalache
+      uses: actions/cache@v5
+      with:
+        path: apalache-${{ env.APALACHE_VERSION }}
+        key: apalache-v${{ env.APALACHE_VERSION }}
+
+    - name: Download Apalache
+      if: steps.cache-apalache.outputs.cache-hit != 'true'
+      run: |
+        curl -fsSL "https://github.com/apalache-mc/apalache/releases/download/v${APALACHE_VERSION}/apalache-${APALACHE_VERSION}.tgz" -o apalache.tgz
+        tar -xzf apalache.tgz
+        rm apalache.tgz
+
+    - name: Add Apalache to PATH
+      run: echo "$PWD/apalache-${APALACHE_VERSION}/bin" >> "$GITHUB_PATH"
+
+    - name: Convert examples to TLA+
+      run: uv run python scripts/convert_examples_to_tla.py
+
+    - name: Run Apalache typecheck on generated specs
+      run: |
+        set -euo pipefail
+        mkdir -p .apalache-out/build
+        cd .build
+        for f in *.tla; do
+          echo "=== Typechecking $f ==="
+          apalache-mc typecheck --out-dir="../.apalache-out/build/$(basename "${f%.tla}")" "$f"
+        done

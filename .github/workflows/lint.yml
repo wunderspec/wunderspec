@@ -1,0 +1,40 @@
+name: Lint
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v8.1.0
+      with:
+        enable-cache: true
+        cache-suffix: lint
+
+    - name: Install project
+      run: uv sync --locked --group dev
+
+    - name: Check code formatting with Black
+      run: uv run black --check --diff .
+
+    - name: Check import sorting with isort
+      run: uv run isort --check-only --diff .
+
+    - name: Lint with flake8
+      run: uv run flake8 wunderspec examples scripts
+
+    - name: Type check with mypy
+      run: uv run mypy wunderspec
