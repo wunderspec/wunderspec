@@ -74,8 +74,8 @@ commands are not included in this package.
 
 ## 4. Release Provenance
 
-- Release tag: `v0.129.7`
-- Source commit: `9f7d0c21b38bc84e2c830dd2d0b238d5de34d78a`
+- Release tag: `v0.129.8`
+- Source commit: `370a2fc4ee7aa0311e6df15487d0f2079e6f148e`
 
 See [tests/README.md][] for the development test log captured at release time.
 

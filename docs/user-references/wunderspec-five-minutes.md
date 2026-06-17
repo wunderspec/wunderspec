@@ -105,10 +105,44 @@ currently has three kinds of properties:
  
  **Immutability.** While the Wunderspec state machines mutate the state,
  the expressions operate over immutable data structures. For the data
- structures, see the [Cheatsheet][cheatsheet].
+ structures, see the [Cheatsheet][cheatsheet]. You can still specify mutable
+ data structures in Wunderspec!
+
+**Python DSL.** Wunderspec is a Python DSL for writing state machines. As a
+result, you get plenty of Python goodies automatically:
+
+ - Syntax highlighting, code completion, and linting in your favorite IDE.
+
+ - Opinionated code formatting and optional type checking with [mypy][].
+
+ - REPL with [IPython][] and debugging with [pdb][].
+
+ - package management with [uv][] (well, let's say this is good!).
+
+ - Many high-level constructs and idioms from Python.
+
+ - You can use Python as a meta-language or a macroprocessor to generate
+ Wunderspec code.
+
+Since Wunderspec is a DSL, it comes with a few warnings:
+
+ - Your Python code actually acts as a transpiler! When it runs, it produces an
+ internal abstract syntax tree (AST) of Wunderspec. For example, local
+ declarations are *lazy* by default, this can be fixed with `c.cache(...)`.  Run
+ `wunderspec lint` to find the common footguns.
+
+ - A subset of Python code makes sense in Wunderspec. For example, you should
+ not use `if` and `for` directly in your actions. Instead, use
+ `c.alternatives(...)`, `c.one_of(...)`, and `c.split(...)`.
+
+ - Always check the [Cheatsheet][cheatsheet], to see what works.
  
  
 [sloppy_counter]: https://github.com/wunderspec/wunderspec/blob/main/examples/sloppy_counter.py
 [ledger]: https://github.com/wunderspec/wunderspec/blob/main/examples/ledger.py
 [simple_wal1]: https://github.com/wunderspec/wunderspec/blob/main/examples/simple_wal1.py
 [cheatsheet]: https://wunderspec.com/cheatsheet
+[mypy]: https://mypy.readthedocs.io/en/stable/
+[IPython]: https://ipython.org/
+[pdb]: https://docs.python.org/3/library/pdb.html
+[uv]: https://docs.astral.sh/uv/
