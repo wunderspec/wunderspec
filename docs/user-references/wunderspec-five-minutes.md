@@ -42,7 +42,7 @@ def step(c: Context[SloppyCounterState]):
         increment(c, cpu)
 ```
 
-In the code above, `cpu` receive a value from the set `cpus(c.state)`.  The
+In the code above, `cpu` receives a value from the set `cpus(c.state)`.  The
 second argument to `one_of` is a convenient alias for the intermediate
 representation and generated code. When it's omitted, the name is generated
 automatically. Wunderspec commands interpret this construct differently:
@@ -57,8 +57,8 @@ automatically. Wunderspec commands interpret this construct differently:
 **Control non-determinism.** Wunderspec does not have explicit processes,
 threads, processors, or other computing devices. Instead, is uses control
 non-determinism to model choice of actions. Non-deterministic choice is done
-with `with c.alternatives(...)`. For example, he is how [simple
-WAL][simple_wal1] defines `step` with alternatives:
+with `with c.alternatives(...)`. For example, he is how [simple write-ahead
+log][simple_wal1] defines `step` with alternatives:
 
 ```python
 @action
@@ -133,8 +133,9 @@ Since Wunderspec is a DSL, it comes with a few warnings:
 
  - A subset of Python code makes sense in Wunderspec. For example, you should
  not use `if` and `for` directly in your actions. Instead, use
- `c.alternatives(...)`, `c.one_of(...)`, and `c.split(...)`.
-
+ `c.alternatives(...)`, `c.one_of(...)`, and `c.split(...)` in actions and
+ `then_expr.if_(cond).else_(else_expr)` in expressions.
+ 
  - Always check the [Cheatsheet][cheatsheet], to see what works.
  
  

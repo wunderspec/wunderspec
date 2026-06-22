@@ -107,6 +107,12 @@ class _MatchBranch:
     param: str | None
 
 
+@dataclass(frozen=True)
+class _QuintInstance:
+    proto_name: str
+    overrides: dict[str, dict[str, Any]]
+
+
 def convert_quint(
     options: QuintConvertOptions, reporter: Reporter
 ) -> QuintConvertResult:
@@ -251,6 +257,24 @@ def _select_main_module(ir: dict[str, Any], source: Path) -> str:
     if len(modules) == 1:
         return str(modules[0].get("name"))
 
+    instance_candidates: list[str] = []
+    for module in modules:
+        decls = module.get("declarations", [])
+        if any(
+            isinstance(d, dict) and d.get("kind") == "instance" and not d.get("hidden")
+            for d in decls
+        ):
+            instance_candidates.append(str(module.get("name")))
+
+    unique_instances = sorted(set(instance_candidates))
+    if len(unique_instances) == 1:
+        return unique_instances[0]
+    if len(unique_instances) > 1:
+        raise QuintConvertError(
+            "Could not infer --main module; pass --main. Candidates: "
+            + ", ".join(unique_instances)
+        )
+
     candidates: list[str] = []
     for module in modules:
         decls = module.get("declarations", [])
@@ -362,6 +386,7 @@ class _PythonGenerator:
             if isinstance(d, dict) and not d.get("hidden") and "importedFrom" not in d
         ]
         self._all_decls = self._collect_declarations()
+        self._instance = self._select_direct_instance(main_decls)
         self._decls = self._effective_decls(main_decls)
         self._main_decl_ids = {id(d) for d in self._decls}
         self._raw_type_aliases = {
@@ -496,11 +521,49 @@ class _PythonGenerator:
                 decls.append(decl)
         return decls
 
+    def _select_direct_instance(
+        self, main_decls: list[dict[str, Any]]
+    ) -> _QuintInstance | None:
+        instances = [
+            d
+            for d in main_decls
+            if d.get("kind") == "instance"
+            and d.get("identityOverride") is True
+            and isinstance(d.get("protoName"), str)
+        ]
+        if len(instances) != 1:
+            return None
+
+        overrides: dict[str, dict[str, Any]] = {}
+        for entry in instances[0].get("overrides", []):
+            if not isinstance(entry, list) or len(entry) != 2:
+                continue
+            target, value = entry
+            if (
+                not isinstance(target, dict)
+                or not isinstance(value, dict)
+                or not isinstance(target.get("name"), str)
+            ):
+                continue
+            overrides[str(target["name"])] = value
+        return _QuintInstance(
+            proto_name=str(instances[0]["protoName"]), overrides=overrides
+        )
+
     def _effective_decls(
         self, main_decls: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         if self._has_state_decls(main_decls):
             return main_decls
+
+        if self._instance is not None:
+            module = self._find_module(self._instance.proto_name)
+            return (
+                self._machine_decls(
+                    [d for d in module.get("declarations", []) if isinstance(d, dict)]
+                )
+                + main_decls
+            )
 
         candidates: list[list[dict[str, Any]]] = []
         imported_groups: dict[str, list[dict[str, Any]]] = {}
@@ -525,13 +588,15 @@ class _PythonGenerator:
         if len(candidates) != 1:
             return main_decls
 
-        machine_decls = [
+        return self._machine_decls(candidates[0]) + main_decls
+
+    def _machine_decls(self, decls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [
             d
-            for d in candidates[0]
+            for d in decls
             if d.get("kind") in {"const", "var"}
             or (d.get("kind") == "def" and d.get("qualifier") in {"action", "run"})
         ]
-        return machine_decls + main_decls
 
     def _has_state_decls(self, decls: list[dict[str, Any]]) -> bool:
         return any(d.get("kind") in {"const", "var"} for d in decls)
@@ -761,6 +826,7 @@ class _PythonGenerator:
         chunks.extend(self._render_prelude_helpers())
         chunks.extend(self._render_types())
         chunks.append(self._render_state())
+        chunks.append(self._render_instance())
         chunks.extend(self._render_defs())
         chunks.append(self._render_run_tests())
         source = "\n".join(chunks).rstrip() + "\n"
@@ -949,6 +1015,38 @@ class _PythonGenerator:
                     f"    {_py_name(str(decl['name']))}: {wrapper}[{self._type_expr(typ)}]"
                 )
         lines.append("")
+        return "\n".join(lines)
+
+    def _render_instance(self) -> str:
+        if self._instance is None:
+            return ""
+
+        const_decls = [d for d in self._decls if d.get("kind") == "const"]
+        args: list[str] = []
+        for decl in const_decls:
+            name = str(decl.get("name"))
+            value = self._instance.overrides.get(name)
+            if value is None:
+                continue
+            typ = decl.get("typeAnnotation") or self._type_from_table(decl.get("id"))
+            code = self._expr(
+                value,
+                env=set(),
+                def_name=f"instance {self.module_name}",
+                expected_type=typ,
+            )
+            args.append(f"{_py_name(name)}={code}")
+
+        if not args:
+            return ""
+
+        lines = [
+            "@instance",
+            f"def {_py_name(self.module_name)}() -> {self.state_class_name}:",
+            f"    return {self.state_class_name}(",
+        ]
+        lines.extend(f"        {arg}," for arg in args)
+        lines.extend(["    )", ""])
         return "\n".join(lines)
 
     def _render_defs(self) -> list[str]:
@@ -1850,7 +1948,7 @@ class _PythonGenerator:
             base = self._expr(args[0], env=env, def_name=def_name)
             key = self._expr(args[1], env=env, def_name=def_name)
             lam = self._expr(args[2], env=env, def_name=def_name)
-            return f"{base}.replace({key}, {lam}({base}[{key}]))"
+            return f"{base}.replace({key}, ({lam})({base}[{key}]))"
         if op == "with" and len(args) == 3:
             field = args[1]
             if field.get("kind") != "str":
