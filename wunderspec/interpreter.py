@@ -55,6 +55,7 @@ from wunderspec.ast import (
     TupleCtorNode,
     TupleGetNode,
     TupleUpdateNode,
+    UnionSort,
     VarNode,
 )
 from wunderspec.ast.action_ast import (
@@ -1311,7 +1312,7 @@ def _value_list_keys(e: ListKeysNode, env: Env = pmap()) -> IValue:
 def _value_union_ctor(e: UnionCtorNode, env: Env = pmap()) -> IValue:
     """Evaluate union constructor nodes."""
     payload_val = value(e.payload, env) if e.payload is not None else None
-    return UnionValue(e.tag, payload_val)
+    return UnionValue(e.tag, payload_val, cast(UnionSort, e.sort))
 
 
 @_value_impl.register(UnionGetTagNode)

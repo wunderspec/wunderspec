@@ -593,16 +593,23 @@ class TupleValue(IValue):
 class UnionValue(IValue):
     """A union value: tag + optional payload."""
 
-    __slots__ = ("_tag", "_payload")
+    __slots__ = ("_tag", "_payload", "_sort")
 
-    def __init__(self, tag: str, payload: IValue | None = None):
+    def __init__(
+        self,
+        tag: str,
+        payload: IValue | None = None,
+        union_sort: UnionSort | None = None,
+    ):
         self._tag = tag
         self._payload = payload
+        self._sort = union_sort
 
     @property
     def sort(self) -> Sort:
-        # Note: This creates a single-variant UnionSort based on the value's tag.
-        # For a complete union type, the full UnionSort should be known externally.
+        if self._sort is not None:
+            return self._sort
+        # Values imported without type context still expose the active variant only.
         payload_sort = self._payload.sort if self._payload is not None else None
         return UnionSort(**{self._tag: payload_sort})
 
@@ -2122,11 +2129,11 @@ def from_python_with_sort(v: Any, sort: Sort) -> IValue:
             raise TypeError(f"Unexpected union variant {tag!r} for {sort!r}")
         payload_sort = sort[tag]
         if payload_sort is None:
-            return UnionValue(tag)
+            return UnionValue(tag, union_sort=sort)
         fields = v._fields  # type: ignore[attr-defined]
         if fields == ("value",):
             payload_value = v.value  # type: ignore[attr-defined]
         else:
             payload_value = {name: getattr(v, name) for name in fields}
-        return UnionValue(tag, from_python_with_sort(payload_value, payload_sort))
+        return UnionValue(tag, from_python_with_sort(payload_value, payload_sort), sort)
     return from_python(v)
