@@ -16,7 +16,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 
 from wadler_lindig import AbstractDoc, BreakDoc, GroupDoc, NestDoc, TextDoc
 
@@ -386,6 +386,9 @@ class _PythonGenerator:
             if isinstance(d, dict) and not d.get("hidden") and "importedFrom" not in d
         ]
         self._all_decls = self._collect_declarations()
+        self._decl_by_name = {
+            str(d.get("name")): d for d in self._all_decls if "name" in d
+        }
         self._instance = self._select_direct_instance(main_decls)
         self._decls = self._effective_decls(main_decls)
         self._main_decl_ids = {id(d) for d in self._decls}
@@ -469,9 +472,6 @@ class _PythonGenerator:
                     )
                 )
         self._union_ctor_names = set(self._union_ctors_by_name)
-        self._decl_by_name = {
-            str(d.get("name")): d for d in self._all_decls if "name" in d
-        }
         self.diagnostics: list[ConversionDiagnostic] = []
         self._pending_comments: list[str] = []
         self._vars = [str(d["name"]) for d in self._decls if d.get("kind") == "var"]
@@ -560,7 +560,8 @@ class _PythonGenerator:
             module = self._find_module(self._instance.proto_name)
             return (
                 self._machine_decls(
-                    [d for d in module.get("declarations", []) if isinstance(d, dict)]
+                    [d for d in module.get("declarations", []) if isinstance(d, dict)],
+                    include_property_defs=True,
                 )
                 + main_decls
             )
@@ -590,16 +591,43 @@ class _PythonGenerator:
 
         return self._machine_decls(candidates[0]) + main_decls
 
-    def _machine_decls(self, decls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _machine_decls(
+        self, decls: list[dict[str, Any]], *, include_property_defs: bool = False
+    ) -> list[dict[str, Any]]:
         return [
             d
             for d in decls
             if d.get("kind") in {"const", "var"}
             or (d.get("kind") == "def" and d.get("qualifier") in {"action", "run"})
+            or (include_property_defs and self._property_kind(d) is not None)
         ]
 
     def _has_state_decls(self, decls: list[dict[str, Any]]) -> bool:
         return any(d.get("kind") in {"const", "var"} for d in decls)
+
+    def _property_kind(
+        self, decl: dict[str, Any]
+    ) -> Literal["invariant", "example"] | None:
+        if decl.get("kind") != "def":
+            return None
+        if decl.get("qualifier") in {"action", "run", "nondet"}:
+            return None
+        name = str(decl.get("name"))
+        if name.startswith("q::") or name in getattr(self, "_union_ctor_names", set()):
+            return None
+        expr = decl.get("expr")
+        if not isinstance(expr, dict) or self._lambda_params(expr):
+            return None
+        result_type = self._decl_result_type(decl)
+        if not isinstance(result_type, dict) or result_type.get("kind") != "bool":
+            return None
+        if name.endswith(("_example", "_examples", "_ex")):
+            return "example"
+        if name.startswith("no_") or name.endswith(
+            ("_inv", "_invariant", "_invariants")
+        ):
+            return "invariant"
+        return None
 
     def _type_key(self, typ: Any) -> str:
         return _type_key(self._expand_type_aliases(typ))
@@ -1101,9 +1129,13 @@ class _PythonGenerator:
         params = self._lambda_params(expr)
         py_params = [_py_name(p) for p in params]
         sig_tail = "".join(f", {p}: Expr" for p in py_params)
-        lines = [
-            f"def {_py_name(name)}(_state: {self.state_class_name}{sig_tail}) -> Expr:",
-        ]
+        property_kind = self._property_kind(decl) if exported else None
+        lines = []
+        if property_kind is not None:
+            lines.append(f"@{property_kind}")
+        lines.append(
+            f"def {_py_name(name)}(_state: {self.state_class_name}{sig_tail}) -> Expr:"
+        )
         body_expr = expr.get("expr") if expr.get("kind") == "lambda" else expr
         old_state_ref = self._current_state_ref
         self._current_state_ref = "_state"

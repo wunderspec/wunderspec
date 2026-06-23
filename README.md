@@ -25,6 +25,13 @@ This is **the open-core distribution**.
 > 📋 **Cheatsheet:** the [Wunderspec cheatsheet][cheatsheet]
 > summarizes the DSL and CLI in a few pages — keep it open while you work.
 
+<div align="center">
+  <img
+    src="https://raw.githubusercontent.com/wunderspec/wunderspec/main/assets/design/svg/wunderspec_flower.svg"
+    alt="Wunderspec Flower"
+    width="70%">
+</div>
+
 ## 1. Wunderspec in Action
 
 Follow Bob in [his Wunderspec adventure][bobs_log].  There, Bob writes a
@@ -74,8 +81,8 @@ commands are not included in this package.
 
 ## 4. Release Provenance
 
-- Release tag: `v0.130.1`
-- Source commit: `1dd6d9a82c588432ac243c832e3427dfdebd3a1a`
+- Release tag: `v0.131.1`
+- Source commit: `622d23632bea897a636483491f96c576e3c37bbe`
 
 See [tests/README.md][] for the development test log captured at release time.
 

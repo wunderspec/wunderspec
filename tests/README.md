@@ -2,13 +2,13 @@
 
 The unit tests from the Wunderspec development repository are omitted from this
 public distribution to keep the package focused. The full development
-`make test` suite currently collects 2356 tests.
+`make test` suite currently collects 2357 tests.
 
 ## Release Provenance
 
-- Release tag: `v0.130.1`
-- Source commit: `1dd6d9a82c588432ac243c832e3427dfdebd3a1a`
-- Test log captured at: `2026-06-22T20:20:29Z`
+- Release tag: `v0.131.1`
+- Source commit: `622d23632bea897a636483491f96c576e3c37bbe`
+- Test log captured at: `2026-06-23T10:58:37Z`
 - `make test` exit code: `0`
 
 ## Full Test Log From the Development Repository
@@ -20,7 +20,7 @@ platform linux -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0
 rootdir: /home/runner/work/wunderspec-dev/wunderspec-dev/release-source
 configfile: pyproject.toml
 plugins: pytest_codeblocks-0.17.0, subtests-0.15.0, hypothesis-6.155.2, cov-6.3.0, markdown-pytest-0.3.2
-collected 2356 items
+collected 2357 items
 
 docs/user-references/booleans.md .                                       [  0%]
 docs/user-references/comprehensions.md .                                 [  0%]
@@ -96,7 +96,7 @@ tests/test_lang_maps.py ....................................             [ 65%]
 tests/test_lang_record.py ................................               [ 67%]
 tests/test_lang_sets.py ................................................ [ 69%]
 ........................................................................ [ 72%]
-................................................................         [ 75%]
+................................................................         [ 74%]
 tests/test_lang_temporal.py ............................................ [ 76%]
 .........                                                                [ 77%]
 tests/test_lang_tuples.py ..........................                     [ 78%]
@@ -107,7 +107,7 @@ tests/test_model_checker.py ..............................               [ 83%]
 tests/test_permutation.py ..................                             [ 84%]
 tests/test_pretty_printing.py ....................................ss.... [ 86%]
 ..s                                                                      [ 86%]
-tests/test_quint_convert.py .........                                    [ 87%]
+tests/test_quint_convert.py ..........                                   [ 87%]
 tests/test_quint_translation_manifest.py .....                           [ 87%]
 tests/test_random_walk_replay.py .....                                   [ 87%]
 tests/test_random_walk_seeds.py ....                                     [ 87%]
@@ -124,5 +124,5 @@ tests/test_tla.py ...................................................... [ 94%]
 tests/test_tlc_trace.py ....                                             [ 98%]
 tests/test_trace_output.py .........................                     [100%]
 
-====================== 2345 passed, 11 skipped in 27.88s =======================
+====================== 2346 passed, 11 skipped in 31.26s =======================
 ```
