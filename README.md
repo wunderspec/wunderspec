@@ -19,11 +19,17 @@ they become production incidents.
 
 This is **the open-core distribution**.
 
-> 📋 **Wunderspec in 5 minutes:** the [Wunderspec in Five Minutes][five-minutes]
+> :clipboard: **Wunderspec in 5 minutes:** the [Wunderspec in Five Minutes][five-minutes]
 > gives you a quick overview of the core concepts.
 
-> 📋 **Cheatsheet:** the [Wunderspec cheatsheet][cheatsheet]
+> :clipboard: **Cheatsheet:** the [Wunderspec cheatsheet][cheatsheet]
 > summarizes the DSL and CLI in a few pages — keep it open while you work.
+
+> :bulb: **Using Quint?** Try this command:
+> ```sh
+> uv tool install wunderspec
+> wunderspec convert --from=spec.qnt --to=spec.py --main=main
+> ```
 
 <div align="center">
   <img
@@ -81,8 +87,8 @@ commands are not included in this package.
 
 ## 4. Release Provenance
 
-- Release tag: `v0.132.1`
-- Source commit: `b83e1bf5164915cebd91e7021792178822a7af65`
+- Release tag: `v0.132.2`
+- Source commit: `de6a52bb5a7c15929a626ef0dc90fb39e61d41af`
 
 See [tests/README.md][] for the development test log captured at release time.
 

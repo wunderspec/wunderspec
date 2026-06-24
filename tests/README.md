@@ -6,9 +6,9 @@ public distribution to keep the package focused. The full development
 
 ## Release Provenance
 
-- Release tag: `v0.132.1`
-- Source commit: `b83e1bf5164915cebd91e7021792178822a7af65`
-- Test log captured at: `2026-06-23T15:29:31Z`
+- Release tag: `v0.132.2`
+- Source commit: `de6a52bb5a7c15929a626ef0dc90fb39e61d41af`
+- Test log captured at: `2026-06-24T14:15:09Z`
 - `make test` exit code: `0`
 
 ## Full Test Log From the Development Repository
@@ -124,5 +124,5 @@ tests/test_tla.py ...................................................... [ 94%]
 tests/test_tlc_trace.py ....                                             [ 98%]
 tests/test_trace_output.py .........................                     [100%]
 
-====================== 2347 passed, 11 skipped in 28.60s =======================
+====================== 2347 passed, 11 skipped in 30.98s =======================
 ```
