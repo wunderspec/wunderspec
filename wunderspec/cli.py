@@ -13,6 +13,7 @@ from typing import TextIO
 
 from wunderspec import api
 from wunderspec._edition import feature_message
+from wunderspec.exec import render_action_profile
 from wunderspec.trace_output import DEFAULT_TRACE_WIDTH, TraceStyle, print_trace
 
 
@@ -111,6 +112,15 @@ def _add_run_args(parser: argparse.ArgumentParser) -> None:
         "--max-steps", type=int, default=20, help="Max steps per trace (default: 20)"
     )
     parser.add_argument(
+        "--max-retries-per-step",
+        type=int,
+        default=api.DEFAULT_MAX_RETRIES_PER_STEP,
+        help=(
+            "Per-step retry budget; the total budget per trace is this value "
+            f"times --max-steps (default: {api.DEFAULT_MAX_RETRIES_PER_STEP})"
+        ),
+    )
+    parser.add_argument(
         "--bound",
         type=int,
         default=2**31 - 1,
@@ -128,6 +138,7 @@ def _add_run_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Disable colored output",
     )
+    _add_action_profiling_arg(parser)
 
 
 def _add_no_print_trace_arg(parser: argparse.ArgumentParser) -> None:
@@ -136,6 +147,27 @@ def _add_no_print_trace_arg(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Suppress human-readable trace printing for findings",
     )
+
+
+def _add_action_profiling_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--no-action-profiling",
+        action="store_true",
+        help=(
+            "Disable per-action tried/fired profiling "
+            "(only @action(inline=False) actions are profiled)"
+        ),
+    )
+
+
+def _print_action_profile(profile, reporter: ConsoleReporter) -> None:
+    """Print the per-action tried/fired table, if profiling was enabled."""
+    if profile is None:
+        return
+    for line in render_action_profile(
+        profile, reporter.trace_width, reporter.use_color
+    ):
+        reporter.out(line)
 
 
 def _configure_colors(no_color: bool, reporter: ConsoleReporter) -> None:
@@ -171,13 +203,18 @@ def _run_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
             timeout=args.timeout,
             best_trace=(None if args.best_trace is None else bool(args.best_trace)),
             no_print_trace=args.no_print_trace,
+            no_action_profiling=args.no_action_profiling,
+            max_retries_per_step=args.max_retries_per_step,
         ),
         reporter=reporter,
     )
+    _print_action_profile(result.action_profile, reporter)
     if result.outcome_kind == "violation":
         sys.exit(1)
     if result.outcome_kind == "example_found":
         sys.exit(2)
+    if result.outcome_kind == "example_not_found":
+        sys.exit(3)
 
 
 def _replay_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
@@ -196,6 +233,7 @@ def _replay_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None
             from_schedule=args.from_schedule,
             out_itf=args.out_itf,
             out_schedule=args.out_schedule,
+            max_retries_per_step=args.max_retries_per_step,
         ),
         reporter=reporter,
     )
@@ -203,6 +241,8 @@ def _replay_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None
         sys.exit(1)
     if result.outcome_kind == "example_found":
         sys.exit(2)
+    if result.outcome_kind == "example_not_found":
+        sys.exit(3)
 
 
 def _explain_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
@@ -258,7 +298,7 @@ def _with_tlc_command(args: argparse.Namespace, reporter: ConsoleReporter) -> No
     if result.outcome_kind == "example_found":
         sys.exit(2)
     if result.outcome_kind == "example_not_found":
-        sys.exit(0)
+        sys.exit(3)
     if result.outcome_kind == "violation":
         # -continue makes TLC exit 0 even after reporting violations.
         sys.exit(result.returncode or 1)
@@ -294,7 +334,7 @@ def _with_apalache_command(args: argparse.Namespace, reporter: ConsoleReporter) 
     if result.outcome_kind == "example_found":
         sys.exit(2)
     if result.outcome_kind == "example_not_found":
-        sys.exit(0)
+        sys.exit(3)
     if result.outcome_kind == "violation":
         sys.exit(result.returncode or 1)
     if result.returncode != 0:
@@ -322,6 +362,7 @@ def _check_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
         out_schedule=args.out_schedule,
         max_findings=args.max_findings,
         out_itf=args.out_itf,
+        no_action_profiling=args.no_action_profiling,
     )
     result = api.check(request, reporter=reporter)
     if result.outcome_kind in ("violation", "example_found"):
@@ -352,19 +393,23 @@ def _check_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
                     f"Replay with: "
                     f"{api._replay_command_for_check(request, result.schedule_paths[i])}"
                 )
+        _print_action_profile(result.action_profile, reporter)
         sys.exit(1 if result.outcome_kind == "violation" else 2)
     if result.predicate_kind == "example":
-        reporter.success(
+        reporter.warn(
             f"No examples found "
             f"({result.produced_states} states produced, "
             f"{result.distinct_states} distinct)"
         )
+        _print_action_profile(result.action_profile, reporter)
+        sys.exit(3)
     else:
         reporter.success(
             f"No invariant violations found "
             f"({result.produced_states} states produced, "
             f"{result.distinct_states} distinct)"
         )
+    _print_action_profile(result.action_profile, reporter)
 
 
 def _fuzz_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
@@ -393,6 +438,8 @@ def _fuzz_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
         sys.exit(1)
     if result.outcome_kind == "example_found":
         sys.exit(2)
+    if result.outcome_kind == "example_not_found":
+        sys.exit(3)
 
 
 def _lint_command(args: argparse.Namespace, reporter: ConsoleReporter) -> None:
@@ -926,6 +973,7 @@ def main() -> None:
         help="Disable colored output",
     )
     _add_no_print_trace_arg(check_parser)
+    _add_action_profiling_arg(check_parser)
 
     fuzz_parser = subparsers.add_parser(
         "fuzz",

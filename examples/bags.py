@@ -144,6 +144,26 @@ class Bag:
         """Whether the bag has no elements at all."""
         return self._map.is_empty
 
+    def filter(self, predicate: Callable[[Expr], Expr]) -> "Bag":
+        """Sub-bag of the elements whose key satisfies ``predicate``.
+
+        Counts are preserved: an element kept by ``predicate`` keeps the same
+        number of copies it had in ``self``.
+
+        Examples:
+
+            >>> from wunderspec import Set, Val
+            >>> evens = Bag.from_set(Set(1, 2, 3, 4)).filter(lambda e: e % 2 == 0)
+            >>> type(evens).__name__
+            'Bag'
+            >>> evens[Val(2)].sort          # a kept element keeps its count
+            IntSort()
+            >>> evens.cardinality.sort
+            IntSort()
+        """
+        kept = self._map.keys.filter(predicate)
+        return Bag(kept.map_to(lambda e: self._map[e]))
+
     # --- combinators ---------------------------------------------------------
 
     def __add__(self, other: "Bag") -> "Bag":

@@ -1,6 +1,6 @@
 [project]
 name = "wunderspec"
-version = "0.132.2"
+version = "0.134.1"
 description = "Protocol specifications as Python code"
 authors = [
     {name = "Igor Konnov"},

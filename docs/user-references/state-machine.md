@@ -336,6 +336,12 @@ def reaches_five(s: CounterState) -> BoolExpr:
 assert getattr(reaches_five, "_is_example") is True
 ```
 
+When you check an `@example` with `run`, `check`, or `fuzz`, finding a witness
+state prints `Example found …` and exits with code `2`. Finding none prints
+`warning: No examples found …` and exits with code `3` — an unmet reachability
+goal is reported as a warning, not a success. (For an `@invariant`, no violation
+is a genuine `success` and exits `0`; a violation exits `1`.)
+
 ### `@temporal`
 
 Declares a liveness property as a `TemporalExpr`:
@@ -485,6 +491,18 @@ uv run wunderspec check \
     counter.py
 ```
 
+### Trace length and retries
+
+A `run` trace grows until it reaches `--max-steps` or it gets stuck (no enabled
+step can be sampled). Because the random walk picks an action blindly and a pick
+may be disabled, each trace has a retry budget of `--max-retries-per-step ×
+--max-steps`; a failed pick consumes one retry, and the trace is cut when the
+budget is exhausted (or `--max-steps` is reached). Raise `--max-retries-per-step`
+(default 30) for specs where progress depends on hard-to-hit guards — a low value
+makes traces die early. At the end, `run` prints
+`Trace length statistics: max=…, min=…, average=…` over all sampled traces, so
+you can see at a glance whether traces are reaching full length.
+
 By default both `run` and `check` stop after the first invariant violation or
 found example. Use `--max-findings N` to report up to `N` of them. For `run`
 this keeps the random walk going until `N` matches accumulate; for `check` the
@@ -515,6 +533,35 @@ uv run wunderspec check \
     --max-findings=10 --out-itf - \
     counter.py | jq -c '.["#meta"].example_step'
 ```
+
+### Action profiling
+
+By default, `run` and `check` accumulate a per-action profile and print a
+compact `fired/tried` table at the end, sorted by action name:
+
+```text
+Action profile (fired/tried):
+enter 0/135 (0%)        exit_cs 0/148 (0%)        receive_ack 0/19 (0%)
+receive_release 0/32 (0%)  receive_request 11/21 (52%)  request 49/124 (40%)
+```
+
+For each action, **fired** is the number of times its body completed without
+violating an assumption, **tried** is the number of times it was entered, and the
+percentage is the fire rate (`fired/tried`). When color is enabled, actions whose
+fire rate is at or near 0% are highlighted in **red** — they almost never fire and
+are likely dead or only rarely enabled, which is often worth investigating. Only
+actions declared `@action(inline=False)` keep a distinct identity during
+execution and are profiled; inlined actions (the default) are flattened into
+their caller and do not get their own row. A fully inlined spec therefore has
+nothing to profile, and no table is printed. Every non-inline action reachable
+from `init`/`step` is listed, even ones that were never reached during the search
+(shown as `0/0`), which makes dead or unreachable actions easy to spot. The
+counts are eager: a nested action that succeeds is counted as fired even if an
+enclosing action later fails.
+
+Pass `--no-action-profiling` to disable the accumulation and the table (this also
+restores the slightly faster fully-inlined execution path). Profiling is not
+available with `run --debug`, which re-runs the Python action functions directly.
 
 ---
 

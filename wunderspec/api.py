@@ -44,6 +44,8 @@ from wunderspec.ast.set_ast import (
 )
 from wunderspec.errors import EvaluationError, locate_eval_errors
 from wunderspec.exec import (
+    ActionProfile,
+    ActionProfiler,
     RecordingScheduler,
     SchedulerAlternative,
     SchedulerChoiceIndex,
@@ -271,6 +273,11 @@ class ApalacheResult:
     ] = "checked"
 
 
+# Default per-step retry budget for `run`/`replay`. The total retry budget for a
+# trace is this value times ``--max-steps``.
+DEFAULT_MAX_RETRIES_PER_STEP = 30
+
+
 @dataclass(frozen=True)
 class RunRequest:
     spec: str | Path
@@ -290,6 +297,8 @@ class RunRequest:
     timeout: float | None = None
     best_trace: bool | None = None
     no_print_trace: bool = False
+    no_action_profiling: bool = False
+    max_retries_per_step: int = DEFAULT_MAX_RETRIES_PER_STEP
 
 
 @dataclass(frozen=True)
@@ -298,10 +307,14 @@ class RunResult:
     samples_explored: int
     violations: int
     examples_found: int
-    outcome_kind: Literal["none", "violation", "example_found"]
+    outcome_kind: Literal["none", "violation", "example_found", "example_not_found"]
     artifacts: list[str]
     best_trace_seed: int | None = None
     best_trace_length: int = 0
+    action_profile: ActionProfile | None = None
+    trace_length_min: int = 0
+    trace_length_max: int = 0
+    trace_length_avg: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -318,6 +331,7 @@ class ReplayRequest:
     from_schedule: str | Path | None = None
     out_itf: str | Path | None = None
     out_schedule: str | Path | None = None
+    max_retries_per_step: int = DEFAULT_MAX_RETRIES_PER_STEP
 
 
 @dataclass(frozen=True)
@@ -326,7 +340,7 @@ class ReplayResult:
     trace_length: int
     violation_step: int | None
     example_step: int | None
-    outcome_kind: Literal["none", "violation", "example_found"]
+    outcome_kind: Literal["none", "violation", "example_found", "example_not_found"]
     artifacts: list[str]
 
 
@@ -361,6 +375,7 @@ class CheckRequest:
     max_findings: int = 1
     out_itf: str | Path | None = None
     # Stream found traces as ITF NDJSON to this path (or "-" for stdout).
+    no_action_profiling: bool = False
 
 
 @dataclass(frozen=True)
@@ -369,7 +384,7 @@ class CheckResult:
     distinct_states: int
     violation_found: bool
     example_found: bool
-    outcome_kind: Literal["none", "violation", "example_found"]
+    outcome_kind: Literal["none", "violation", "example_found", "example_not_found"]
     trace: tuple[StateView, ...] | None
     artifacts: list[str]
     schedule_path: str | None = None
@@ -384,6 +399,7 @@ class CheckResult:
     predicate_kind: Literal["invariant", "example"] | None = None
     # Kind of the resolved property, set regardless of whether a finding was
     # produced, so the CLI can phrase the no-finding message correctly.
+    action_profile: ActionProfile | None = None
 
 
 @dataclass(frozen=True)
@@ -414,7 +430,7 @@ class FuzzResult:
     corpus_size: int
     violations: int
     examples_found: int
-    outcome_kind: Literal["none", "violation", "example_found"]
+    outcome_kind: Literal["none", "violation", "example_found", "example_not_found"]
     corpus_dir: str
     artifacts: list[str]
 
@@ -1156,6 +1172,8 @@ def _replay_command_for_run(request: RunRequest, trace_seed: int) -> str:
     args.extend(["--max-steps", str(request.max_steps)])
     if request.bound != 2**31 - 1:
         args.extend(["--bound", str(request.bound)])
+    if request.max_retries_per_step != DEFAULT_MAX_RETRIES_PER_STEP:
+        args.extend(["--max-retries-per-step", str(request.max_retries_per_step)])
     args.append(str(request.spec))
     args.extend(["--seed", str(trace_seed)])
     return " ".join(shlex.quote(arg) for arg in args)
@@ -1212,6 +1230,8 @@ def _search_command_for_run(request: RunRequest, seed: int) -> str:
         args.extend(["--best-trace", "1" if request.best_trace else "0"])
     if request.no_print_trace:
         args.append("--no-print-trace")
+    if request.max_retries_per_step != DEFAULT_MAX_RETRIES_PER_STEP:
+        args.extend(["--max-retries-per-step", str(request.max_retries_per_step)])
     args.append(str(request.spec))
     return " ".join(shlex.quote(arg) for arg in args)
 
@@ -1804,6 +1824,14 @@ def run(request: RunRequest, reporter: Reporter | None = None) -> RunResult:
         coverage_native_eval = _native_eval_context(proto, module)
 
     trace_sampler = random_traces_debug if request.debug else random_traces
+    # Per-action profiling is only available on the non-debug AST sampler; the
+    # debug sampler re-runs the Python action functions and does not use the
+    # action_execute interpreter that accumulates the counts.
+    action_profiler: ActionProfiler | None = (
+        ActionProfiler()
+        if not request.no_action_profiling and not request.debug
+        else None
+    )
 
     seed = request.seed if request.seed is not None else random.randrange(2**63)
     rpt.info(f"Seed: {seed}")
@@ -1814,7 +1842,7 @@ def run(request: RunRequest, reporter: Reporter | None = None) -> RunResult:
     settings = WalkSettings(
         seed=seed,
         max_steps=request.max_steps,
-        max_retries_per_step=3,
+        max_retries_per_step=request.max_retries_per_step,
         bound=request.bound,
     )
     run_started_at = time.monotonic()
@@ -1838,6 +1866,10 @@ def run(request: RunRequest, reporter: Reporter | None = None) -> RunResult:
     timed_out = False
     best_trace_seed: int | None = None
     best_trace: tuple[StateView, ...] = ()
+    # running trace-length statistics (number of states per sampled trace)
+    trace_len_min: int | None = None
+    trace_len_max = 0
+    trace_len_sum = 0
     artifacts: list[str] = []
     sink = _ItfNdjsonSink(request.out_itf)
     itf_params = list(proto._params)
@@ -1853,10 +1885,22 @@ def run(request: RunRequest, reporter: Reporter | None = None) -> RunResult:
 
     try:
         with locate_eval_errors():
-            for trace_seed, t in trace_sampler(proto, init_func, step_func, settings):  # type: ignore[type-var]
+            sampler_kwargs = {} if request.debug else {"profiler": action_profiler}
+            for trace_seed, t in trace_sampler(  # type: ignore[type-var]
+                proto, init_func, step_func, settings, **sampler_kwargs
+            ):
                 if run_deadline is not None and time.monotonic() >= run_deadline:
                     timed_out = True
                     break
+
+                trace_len = len(t)
+                trace_len_min = (
+                    trace_len
+                    if trace_len_min is None
+                    else min(trace_len_min, trace_len)
+                )
+                trace_len_max = max(trace_len_max, trace_len)
+                trace_len_sum += trace_len
 
                 if best_trace_enabled and len(t) > len(best_trace):
                     best_trace_seed = trace_seed
@@ -1979,17 +2023,30 @@ def run(request: RunRequest, reporter: Reporter | None = None) -> RunResult:
 
     if predicate is None:
         rpt.success(f"Explored {examples_count} samples without checking a predicate")
-        outcome_kind: Literal["none", "violation", "example_found"] = "none"
+        outcome_kind: Literal[
+            "none", "violation", "example_found", "example_not_found"
+        ] = "none"
     else:
         if match_count == 0:
-            rpt.success(_predicate_summary(predicate, match_count, examples_count))
-            outcome_kind = "none"
+            if predicate.kind == "example":
+                rpt.warn(_predicate_summary(predicate, match_count, examples_count))
+                outcome_kind = "example_not_found"
+            else:
+                rpt.success(_predicate_summary(predicate, match_count, examples_count))
+                outcome_kind = "none"
         elif predicate.kind == "invariant":
             rpt.error(_predicate_summary(predicate, match_count, examples_count))
             outcome_kind = "violation"
         else:
             rpt.info(_predicate_summary(predicate, match_count, examples_count))
             outcome_kind = "example_found"
+
+    trace_len_avg = trace_len_sum / examples_count if examples_count else 0.0
+    if examples_count > 0:
+        rpt.out(
+            f"Trace length statistics: max={trace_len_max}, "
+            f"min={trace_len_min}, average={trace_len_avg:.2f}"
+        )
 
     if best_trace_enabled and best_trace_seed is not None:
         rpt.out(f"Best trace seed: {best_trace_seed}")
@@ -2013,6 +2070,14 @@ def run(request: RunRequest, reporter: Reporter | None = None) -> RunResult:
         artifacts=artifacts,
         best_trace_seed=best_trace_seed,
         best_trace_length=len(best_trace),
+        action_profile=(
+            ActionProfile.from_profiler(action_profiler)
+            if action_profiler is not None
+            else None
+        ),
+        trace_length_min=trace_len_min or 0,
+        trace_length_max=trace_len_max,
+        trace_length_avg=trace_len_avg,
     )
 
 
@@ -2045,7 +2110,7 @@ def replay(request: ReplayRequest, reporter: Reporter | None = None) -> ReplayRe
     settings = WalkSettings(
         seed=request.seed,
         max_steps=replay_max_steps,
-        max_retries_per_step=3,
+        max_retries_per_step=request.max_retries_per_step,
         bound=request.bound,
     )
 
@@ -2257,7 +2322,11 @@ def replay(request: ReplayRequest, reporter: Reporter | None = None) -> ReplayRe
             trace_length=len(t),
             violation_step=None,
             example_step=None,
-            outcome_kind="none",
+            outcome_kind=(
+                "example_not_found"
+                if predicate is not None and predicate.kind == "example"
+                else "none"
+            ),
             artifacts=artifacts,
         )
 
@@ -2363,6 +2432,12 @@ def check(request: CheckRequest, reporter: Reporter | None = None) -> CheckResul
         )
         rpt.info(f"Shuffling with seed: {shuffle_seed}")
 
+    # Keep non-inline actions as named ActionCallNodes when profiling, so their
+    # per-action tried/fired counts can be accumulated during the search.
+    action_profiler: ActionProfiler | None = (
+        ActionProfiler() if not request.no_action_profiling else None
+    )
+
     mc_input = init_model_checker_input(
         proto,
         init_func,
@@ -2389,6 +2464,7 @@ def check(request: CheckRequest, reporter: Reporter | None = None) -> CheckResul
             if predicate is None or predicate.native_eval is None
             else predicate.native_eval.actions
         ),
+        inline_all=action_profiler is None,
     )
 
     progress = _CheckProgress(enabled=not request.no_progress)
@@ -2451,6 +2527,7 @@ def check(request: CheckRequest, reporter: Reporter | None = None) -> CheckResul
                 on_progress=_on_progress,
                 max_findings=request.max_findings,
                 on_finding=_on_finding,
+                profiler=action_profiler,
             )
     except _CheckTimeout:
         timed_out = True
@@ -2483,7 +2560,13 @@ def check(request: CheckRequest, reporter: Reporter | None = None) -> CheckResul
         and predicate is not None
         and predicate.kind == "example",
         outcome_kind=(
-            predicate.outcome_kind if has_finding and predicate is not None else "none"
+            predicate.outcome_kind
+            if has_finding and predicate is not None
+            else (
+                "example_not_found"
+                if predicate is not None and predicate.kind == "example"
+                else "none"
+            )
         ),
         trace=found_states[0] if found_states else None,
         artifacts=artifacts,
@@ -2492,6 +2575,11 @@ def check(request: CheckRequest, reporter: Reporter | None = None) -> CheckResul
         schedule_paths=tuple(schedule_paths),
         itf_path=itf_target,
         predicate_kind=predicate.kind if predicate is not None else None,
+        action_profile=(
+            ActionProfile.from_profiler(action_profiler)
+            if action_profiler is not None
+            else None
+        ),
     )
 
 
@@ -2598,14 +2686,21 @@ def fuzz(request: FuzzRequest, reporter: Reporter | None = None) -> FuzzResult:
 
     if stats.violations > 0:
         rpt.error(f"Found {stats.violations} invariant violation(s)")
-        outcome_kind: Literal["none", "violation", "example_found"] = "violation"
+        outcome_kind: Literal[
+            "none", "violation", "example_found", "example_not_found"
+        ] = "violation"
     elif stats.examples_found > 0:
         rpt.info(f"Found {stats.examples_found} example trace(s)")
         outcome_kind = "example_found"
+    elif predicate is not None and predicate.kind == "example":
+        rpt.warn(
+            f"No examples in {stats.total_execs} executions"
+            f" ({stats.corpus_size} corpus entries)"
+        )
+        outcome_kind = "example_not_found"
     else:
         rpt.success(
-            f"No {'examples' if predicate is not None and predicate.kind == 'example' else 'violations'} "
-            f"in {stats.total_execs} executions"
+            f"No violations in {stats.total_execs} executions"
             f" ({stats.corpus_size} corpus entries)"
         )
         outcome_kind = "none"

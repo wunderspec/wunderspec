@@ -52,6 +52,13 @@ examples:
   - file: sloppy_counter.py
     instances: n2_batch3_8bit n4_batch4_8bit
     invariants: accounting local_shards_bounded approximation_bound
+  - file: etcdraft.py
+    instances: n3
+    invariants: >-
+      message_terms_le_current_term log_inv more_than_one_leader_inv
+      election_safety_inv log_matching_inv quorum_log_inv
+      more_up_to_date_correct_inv leader_completeness_inv committed_is_durable_inv
+    timeout: 30
   - file: minimmit.py
     instances: n6_t1_f0
     invariants: agreement

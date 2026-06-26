@@ -13,6 +13,7 @@ from wunderspec.ast.action_ast import (
     AssumeNode,
     NondetChoiceNode,
 )
+from wunderspec.exec.action_profile import ActionProfiler
 from wunderspec.exec.scheduler import (
     RandomScheduler,
     Scheduler,
@@ -59,6 +60,7 @@ def action_execute(
     env: PMap[str, IValue] = pmap(),
     scheduler: Optional[Scheduler] = None,
     on_action: Optional[OnActionCallback] = None,
+    profiler: Optional[ActionProfiler] = None,
 ) -> Optional[PMap[str, IValue]]:
     """
     Interpret action nodes according to the scheduler. Produce a new environment
@@ -86,7 +88,9 @@ def action_execute(
         case ActionAndNode():
             current_env: PMap[str, IValue] = env
             for act in node.actions:
-                result = action_execute(act, current_env, scheduler, on_action)
+                result = action_execute(
+                    act, current_env, scheduler, on_action, profiler
+                )
                 if result is None:
                     return None
                 current_env = result
@@ -103,12 +107,17 @@ def action_execute(
 
             chosen_idx = int(decision.chosen.removeprefix("act"))
             chosen_action = node.actions[chosen_idx]
-            return action_execute(chosen_action, env, scheduler, on_action)
+            return action_execute(chosen_action, env, scheduler, on_action, profiler)
 
         case ActionCallNode():
-            return action_execute(
-                cast(ActionNode, node.body), env, scheduler, on_action
+            if profiler is not None:
+                profiler.enter(node.action_name)
+            result = action_execute(
+                cast(ActionNode, node.body), env, scheduler, on_action, profiler
             )
+            if profiler is not None and result is not None:
+                profiler.succeeded(node.action_name)
+            return result
 
         case NondetChoiceNode():
             var_name = node.var.name  # type: ignore[attr-defined]
@@ -124,7 +133,9 @@ def action_execute(
             val = value(decision.value)
 
             env_with_binding = env.set(var_name, val)
-            new_env = action_execute(body, env_with_binding, scheduler, on_action)
+            new_env = action_execute(
+                body, env_with_binding, scheduler, on_action, profiler
+            )
             if new_env is None:
                 return None
             else:
@@ -138,7 +149,9 @@ def action_execute(
             val = value(node.value, env)
             env_with_binding = env.set(var_name, val)
             body = cast(ActionNode, node.body)
-            new_env = action_execute(body, env_with_binding, scheduler, on_action)
+            new_env = action_execute(
+                body, env_with_binding, scheduler, on_action, profiler
+            )
             if new_env is None:
                 return None
             else:

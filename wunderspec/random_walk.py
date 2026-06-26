@@ -23,11 +23,13 @@ from wunderspec.ast.action_ast import ActionCallNode, ActionNode, AssumeNode
 from wunderspec.ast.ast import SourceSpan
 from wunderspec.errors import EvaluationError, locate_eval_errors
 from wunderspec.exec import (
+    ActionProfiler,
     AssumptionViolated,
     ExecContext,
     RandomScheduler,
     Scheduler,
     action_execute,
+    collect_action_names,
     state_view,
 )
 from wunderspec.expr import Expr
@@ -39,10 +41,39 @@ from wunderspec.source_tracking import enable_source_tracking
 from wunderspec.sym_context import SymbolicContext
 
 State = TypeVar("State", bound=MachineStateBase)
+_Step = TypeVar("_Step")
 
 # Callback type for action tracing
 OnActionCallback = Callable[[ActionNode], None]
 OnReplayStepCallback = Callable[[tuple[ActionNode, ...]], None]
+
+
+def _walk_trace(
+    max_steps: int,
+    max_retries_per_step: int,
+    do_step: Callable[[int], Optional[_Step]],
+) -> list[_Step]:
+    """Drive a single trace by repeatedly attempting one step.
+
+    Calls ``do_step(step_index)`` for each attempt; a non-``None`` result is a
+    successful step that is appended and advances the trace, while ``None`` is a
+    failed attempt that consumes one retry. The trace is cut when it reaches
+    ``max_steps`` in length or when the retry budget
+    (``max_retries_per_step * max_steps``) is exhausted. ``do_step`` may raise to
+    abort the walk early (used by :func:`locate_evaluation_error`).
+
+    This is the single place that owns the retry-budget and cut policy shared by
+    all the exploration functions below.
+    """
+    trace: list[_Step] = []
+    retries = max_retries_per_step * max_steps
+    while len(trace) < max_steps and retries > 0:
+        result = do_step(len(trace))
+        if result is not None:
+            trace.append(result)
+        else:
+            retries -= 1
+    return trace
 
 
 def _evaluate_state_params(proto_state: State) -> dict[str, IValue]:
@@ -72,12 +103,17 @@ def random_traces(
     init_action: Callable[[Context[State]], None],
     step_action: Callable[[Context[State]], None],
     settings: WalkSettings | None = None,
+    profiler: Optional[ActionProfiler] = None,
 ) -> Iterator[tuple[int, tuple[StateView, ...]]]:
     """
     Randomly walk by first applying `init_action` to `proto_state`,
     then making up to `settings.max_len` steps with `step_action`.
     This function translates the actions to AST nodes first, in
     order to avoid repetitive computations over expressions.
+
+    When ``profiler`` is provided, the actions are translated with
+    ``inline_all=False`` so that non-inline actions keep their identity as
+    ``ActionCallNode`` and per-action tried/fired counts are accumulated.
 
     Yield every trace as ``(trace_seed, trace)``.
     If you don't need more traces, simply stop iterating.
@@ -87,48 +123,48 @@ def random_traces(
 
     rng = random.Random(settings.seed)
 
-    # translate the actions (inline_all=True to avoid ActionCallNode).
+    # When not profiling, translate the actions with inline_all=True to avoid
+    # ActionCallNode indirection in the per-step hot loop. When profiling, keep
+    # inline_all=False so non-inline actions remain named ActionCallNodes.
     # Source tracking is enabled only around the one-time build so that AST
     # nodes carry source spans; this lets evaluation errors be traced back to
     # the spec source without slowing down the per-step hot loop below.
+    inline_all = profiler is None
     with enable_source_tracking():
-        sym_context = SymbolicContext(copy(proto_state), inline_all=True)
+        sym_context = SymbolicContext(copy(proto_state), inline_all=inline_all)
         init_action(sym_context)
         init_node = sym_context.build()
-        sym_context = SymbolicContext(copy(proto_state), inline_all=True)
+        sym_context = SymbolicContext(copy(proto_state), inline_all=inline_all)
         step_action(sym_context)
         step_node = sym_context.build()
+    if profiler is not None:
+        # Seed every known action so even never-tried ones appear as 0/0.
+        for node in (init_node, step_node):
+            for name in collect_action_names(node):
+                profiler.register(name)
     params = _evaluate_state_params(proto_state)
 
     while True:
         trace_seed = rng.randint(0, 2**63)
         trace_rng = random.Random(trace_seed)
         scheduler = RandomScheduler(rng=trace_rng, bound=settings.bound)
-
-        trace: list[StateView] = []
-        # budget proportional to max_steps
-        retries = settings.max_retries_per_step * settings.max_steps
-        max_consecutive = max(settings.max_retries_per_step * 3, 10)
-        consecutive_fails = 0
         env: PMap[str, IValue] = pmap()
-        while len(trace) < settings.max_steps and retries > 0:
-            if consecutive_fails >= max_consecutive:
-                break
-            node = init_node if len(trace) == 0 else step_node
+
+        def do_step(step_index: int) -> Optional[StateView]:
+            nonlocal env
+            node = init_node if step_index == 0 else step_node
             try:
-                new_env = action_execute(node, env, scheduler)
+                new_env = action_execute(node, env, scheduler, profiler=profiler)
             except EvaluationError as ev:
                 ev.trace_seed = trace_seed
-                ev.step_index = len(trace)
+                ev.step_index = step_index
                 raise
-            if new_env is not None:
-                trace.append(state_view(proto_state, new_env, params))
-                env = new_env
-                consecutive_fails = 0
-            else:
-                retries -= 1
-                consecutive_fails += 1
+            if new_env is None:
+                return None
+            env = new_env
+            return state_view(proto_state, new_env, params)
 
+        trace = _walk_trace(settings.max_steps, settings.max_retries_per_step, do_step)
         yield trace_seed, tuple(trace)
 
 
@@ -161,30 +197,23 @@ def random_traces_debug(
         scheduler = RandomScheduler(rng=trace_rng, bound=settings.bound)
 
         context = ExecContext(copy(proto_state), scheduler)
-        trace: list[StateView] = []
-        # budget proportional to max_steps
-        retries = settings.max_retries_per_step * settings.max_steps
-        max_consecutive = max(settings.max_retries_per_step * 3, 10)
-        consecutive_fails = 0
-        while len(trace) < settings.max_steps and retries > 0:
-            if consecutive_fails >= max_consecutive:
-                break
+
+        def do_step(step_index: int) -> Optional[StateView]:
             try:
-                act = init_action if len(trace) == 0 else step_action
+                act = init_action if step_index == 0 else step_action
                 context.step(act)
                 concrete_state = value(context.state)
                 if not isinstance(concrete_state, RecordValue):
                     raise RuntimeError(
                         f"Expected state to be a RecordValue, found: {type(concrete_state)}"
                     )
-                trace.append(state_view(proto_state, concrete_state, params))
                 propagate_values(context, concrete_state)
-                consecutive_fails = 0
+                return state_view(proto_state, concrete_state, params)
             except AssumptionViolated:
                 context.revert()
-                retries -= 1
-                consecutive_fails += 1
+                return None
 
+        trace = _walk_trace(settings.max_steps, settings.max_retries_per_step, do_step)
         yield trace_seed, tuple(trace)
 
 
@@ -223,33 +252,27 @@ def random_traces_replay(
         step_node = sym_context.build()
     params = _evaluate_state_params(proto_state)
 
-    trace: list[StateView] = []
-    retries = settings.max_retries_per_step * settings.max_steps
-    max_consecutive = max(settings.max_retries_per_step * 3, 10)
-    consecutive_fails = 0
     env: PMap[str, IValue] = pmap()
     collect_actions = on_action is not None or on_step is not None
-    while len(trace) < settings.max_steps and retries > 0:
-        if consecutive_fails >= max_consecutive:
-            break
-        node = init_node if len(trace) == 0 else step_node
+
+    def do_step(step_index: int) -> Optional[StateView]:
+        nonlocal env
+        node = init_node if step_index == 0 else step_node
         step_actions: list[ActionNode] = []
         replay_callback = step_actions.append if collect_actions else None
 
         new_env = action_execute(node, env, scheduler, replay_callback)
-        if new_env is not None:
-            if on_step is not None:
-                on_step(tuple(step_actions))
-            if on_action is not None:
-                for step_action_node in step_actions:
-                    on_action(step_action_node)
-            trace.append(state_view(proto_state, new_env, params))
-            env = new_env
-            consecutive_fails = 0
-        else:
-            retries -= 1
-            consecutive_fails += 1
+        if new_env is None:
+            return None
+        if on_step is not None:
+            on_step(tuple(step_actions))
+        if on_action is not None:
+            for step_action_node in step_actions:
+                on_action(step_action_node)
+        env = new_env
+        return state_view(proto_state, new_env, params)
 
+    trace = _walk_trace(settings.max_steps, settings.max_retries_per_step, do_step)
     yield trace_seed, tuple(trace)
 
 
@@ -287,31 +310,31 @@ def locate_evaluation_error(
         step_action(sym_context)
         step_node = sym_context.build()
 
-    trace_len = 0
-    retries = settings.max_retries_per_step * settings.max_steps
-    max_consecutive = max(settings.max_retries_per_step * 3, 10)
-    consecutive_fails = 0
     env: PMap[str, IValue] = pmap()
+
+    def do_step(step_index: int) -> Optional[PMap[str, IValue]]:
+        nonlocal env
+        node = init_node if step_index == 0 else step_node
+        step_actions: list[ActionNode] = []
+        try:
+            new_env = action_execute(node, env, scheduler, step_actions.append)
+        except EvaluationError as ev:
+            ev.trace_seed = trace_seed
+            ev.step_index = step_index
+            ev.action_chain = tuple(step_actions)
+            raise
+        if new_env is None:
+            return None
+        env = new_env
+        return new_env
+
     with locate_eval_errors():
-        while trace_len < settings.max_steps and retries > 0:
-            if consecutive_fails >= max_consecutive:
-                break
-            node = init_node if trace_len == 0 else step_node
-            step_actions: list[ActionNode] = []
-            try:
-                new_env = action_execute(node, env, scheduler, step_actions.append)
-            except EvaluationError as ev:
-                ev.trace_seed = trace_seed
-                ev.step_index = trace_len
-                ev.action_chain = tuple(step_actions)
-                return ev
-            if new_env is not None:
-                env = new_env
-                trace_len += 1
-                consecutive_fails = 0
-            else:
-                retries -= 1
-                consecutive_fails += 1
+        try:
+            # The returned trace is ignored; we only care whether an
+            # EvaluationError surfaces while reproducing the run.
+            _walk_trace(settings.max_steps, settings.max_retries_per_step, do_step)
+        except EvaluationError as ev:
+            return ev
 
     return None
 
@@ -395,17 +418,11 @@ def random_traces_debug_replay(
     else:
         context = ExecContext(copy(proto_state), scheduler)
 
-    trace: list[StateView] = []
-    retries = settings.max_retries_per_step * settings.max_steps
-    max_consecutive = max(settings.max_retries_per_step * 3, 10)
-    consecutive_fails = 0
-    while len(trace) < settings.max_steps and retries > 0:
-        if consecutive_fails >= max_consecutive:
-            break
+    def do_step(step_index: int) -> Optional[StateView]:
         if collect_actions:
             step_actions.clear()
         try:
-            act = init_action if len(trace) == 0 else step_action
+            act = init_action if step_index == 0 else step_action
             context.step(act)
             concrete_state = value(context.state)
             if not isinstance(concrete_state, RecordValue):
@@ -417,14 +434,13 @@ def random_traces_debug_replay(
             if on_action is not None:
                 for step_action_node in step_actions:
                     on_action(step_action_node)
-            trace.append(state_view(proto_state, concrete_state))
             propagate_values(context, concrete_state)
-            consecutive_fails = 0
+            return state_view(proto_state, concrete_state)
         except AssumptionViolated:
             context.revert()
-            retries -= 1
-            consecutive_fails += 1
+            return None
 
+    trace = _walk_trace(settings.max_steps, settings.max_retries_per_step, do_step)
     yield trace_seed, tuple(trace)
 
 

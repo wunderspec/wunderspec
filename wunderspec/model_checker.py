@@ -24,6 +24,7 @@ from wunderspec.ast.action_ast import ActionNode
 from wunderspec.ast.ast import LitNode, Node
 from wunderspec.errors import EvaluationError
 from wunderspec.exec.action_exec import action_execute
+from wunderspec.exec.action_profile import ActionProfiler, collect_action_names
 from wunderspec.exec.scheduler import (
     EnumerativeScheduler,
     RecordingScheduler,
@@ -90,15 +91,21 @@ def init_model_checker_input(
     shuffle_seed: int | None = None,
     native_action_proto: MachineState | None = None,
     native_actions: Mapping[str, Callable[..., Any]] | None = None,
+    inline_all: bool = True,
 ) -> ModelCheckerInput:
-    """Compile the model checker input from the protocol and the actions/invariant."""
+    """Compile the model checker input from the protocol and the actions/invariant.
+
+    With ``inline_all=False`` (used when action profiling is enabled), non-inline
+    actions are kept as named ``ActionCallNode`` so that per-action tried/fired
+    counts can be accumulated during the search.
+    """
     # Source tracking is enabled only around the one-time build so AST nodes
     # carry source spans, letting evaluation errors be traced back to the spec.
     with enable_source_tracking():
-        sym_context = SymbolicContext(copy(proto), inline_all=True)
+        sym_context = SymbolicContext(copy(proto), inline_all=inline_all)
         init_action(sym_context)
         init_node = sym_context.build()
-        sym_context = SymbolicContext(copy(proto), inline_all=True)
+        sym_context = SymbolicContext(copy(proto), inline_all=inline_all)
         step_action(sym_context)
         step_node = sym_context.build()
     if invariant_expr is not None:
@@ -136,6 +143,7 @@ def check_dfs(
     on_progress: CheckProgressCallback | None = None,
     max_findings: int = 1,
     on_finding: OnFindingCallback | None = None,
+    profiler: ActionProfiler | None = None,
 ) -> ModelCheckerResult:
     """
     Model checking by depth-first search. Returns up to ``max_findings``
@@ -161,6 +169,12 @@ def check_dfs(
                     recorded, with (finding_index, trace_states, schedule),
                     enabling streaming of findings as they are discovered.
     """
+    if profiler is not None:
+        # Seed every known action so even never-tried ones appear as 0/0.
+        for action_node in (input.init_node, input.step_node):
+            for name in collect_action_names(action_node):
+                profiler.register(name)
+
     # counterexample traces collected so far, and their schedules
     found_traces: list[tuple[StateView, ...]] = []
     found_schedules: list[tuple[tuple[SchedulerDecision, ...], ...]] = []
@@ -223,7 +237,7 @@ def check_dfs(
         env: PMap[str, IValue] = trace[-1] if len(trace) > 0 else pmap()
         recording_sched = RecordingScheduler(sched)
         try:
-            new_env = action_execute(node, env, recording_sched)
+            new_env = action_execute(node, env, recording_sched, profiler=profiler)
         except EvaluationError as ev:
             ev.step_index = len(trace)
             raise

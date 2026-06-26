@@ -77,6 +77,7 @@ info: Seed: 3
 Rerun the search with: wunderspec run --seed=3 --instance tiny2 --max-steps 10 --no-progress examples/simple_wal1.py
 info: No --property provided; use --property to search for a property. Looking for the longest trace.
 success: Explored 1000 samples without checking a predicate
+Trace length statistics: max=10, min=10, average=10.00
 Best trace seed: 2405875930906139466
 Best trace length: 10
 [State 0]
@@ -206,6 +207,7 @@ Trace seed: 2940409807404031313
   pending: Nop
 Replay with: wunderspec replay --instance tiny2 --property non_empty_log --max-steps 10 examples/simple_wal1.py --seed 2940409807404031313
 info: Found 1 example trace(s) in 10 samples
+Trace length statistics: max=10, min=10, average=10.00
 ```
 
 This is cool! Now, Bob decides to look at an example that updates the key-value
@@ -267,6 +269,7 @@ Trace seed: 5379299308513165481
   pending: Nop
 Replay with: wunderspec replay --instance tiny2 --property non_zero_value --max-steps 10 examples/simple_wal1.py --seed 5379299308513165481
 info: Found 1 example trace(s) in 44 samples
+Trace length statistics: max=10, min=10, average=10.00
 ```
 
 ## 4. Breaking the invariant
@@ -360,6 +363,7 @@ Trace seed: 596164577152659537
   pc: PC.Wait
   pending: Nop
 Replay with: wunderspec replay --instance tiny2 --property kv_mem_matches_log --max-steps 10 examples/simple_wal1.py --seed 596164577152659537
+Trace length statistics: max=10, min=10, average=10.00
 ```
 
 ## 5. Replaying the invariant violation
@@ -560,6 +564,7 @@ uv run wunderspec run --instance tiny2 --property kv_mem_matches_log \
 info: Seed: 10
 Rerun the search with: wunderspec run --seed=10 --instance tiny2 --property kv_mem_matches_log --max-samples 10000 --max-steps 10 --no-progress examples/simple_wal2.py
 success: No invariant violations in 10000 samples
+Trace length statistics: max=10, min=10, average=10.00
 ```
 
 ## 7. Checking the invariant by enumeration

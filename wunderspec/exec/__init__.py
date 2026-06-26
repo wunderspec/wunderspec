@@ -9,6 +9,12 @@ This package provides:
 """
 
 from .action_exec import action_execute, state_view
+from .action_profile import (
+    ActionProfile,
+    ActionProfiler,
+    collect_action_names,
+    render_action_profile,
+)
 from .context import (
     AssumptionViolated,
     BranchingTracker,
@@ -38,6 +44,11 @@ __all__ = [
     # Action execution
     "action_execute",
     "state_view",
+    # Action profiling
+    "ActionProfile",
+    "ActionProfiler",
+    "collect_action_names",
+    "render_action_profile",
     # Context
     "ExecContext",
     "AssumptionViolated",

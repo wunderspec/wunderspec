@@ -192,7 +192,7 @@ def step1(c: Context[BenOrState], rid: Expr):
     rnd = c.cache(s.round[rid])
     c.assume(s.step[rid] == Step.S1)
     # "send the message (1, r, x_P) to all the processes"
-    s.msgs1[rnd] = s.msgs1[rnd] | Set(mk_m1(rid, rnd, s.value[rid]))
+    s.msgs1[rnd] |= Set(mk_m1(rid, rnd, s.value[rid]))
     s.step[rid] = Step.S2
     s.ghost_trigger = Val(False)
 
@@ -214,13 +214,13 @@ def step2(c: Context[BenOrState], rid: Expr):
             # "if more than (N + T)/2 messages have the same value v..."
             c.assume(Val(2) * weight(v) > s.N + s.T)
             # "...then send the message (2, r, v, D) to all processes"
-            s.msgs2[rnd] = s.msgs2[rnd] | Set(mk_d2(rid, rnd, v))
+            s.msgs2[rnd] |= Set(mk_d2(rid, rnd, v))
             s.step[rid] = Step.S3
             s.ghost_trigger = Val(True)
         with next(alts):
             c.assume(Forall(Val(2) * weight(v) <= s.N + s.T for v in values()))
             # "Else send the message (2, r, ?) to all processes"
-            s.msgs2[rnd] = s.msgs2[rnd] | Set(mk_q2(rid, rnd))
+            s.msgs2[rnd] |= Set(mk_q2(rid, rnd))
             s.step[rid] = Step.S3
             s.ghost_trigger = Val(True)
 
@@ -278,8 +278,8 @@ def faulty_step(c: Context[BenOrState]):
         c.one_of(AllSubsets(all_faulty_d2(s, rnd)), "f2d") as f2d,
         c.one_of(AllSubsets(all_faulty_q2(s, rnd)), "f2q") as f2q,
     ):
-        s.msgs1[rnd] = s.msgs1[rnd] | f1
-        s.msgs2[rnd] = s.msgs2[rnd] | (f2d | f2q)
+        s.msgs1[rnd] |= f1
+        s.msgs2[rnd] |= f2d | f2q
         s.ghost_trigger = Val(True)
 
 
