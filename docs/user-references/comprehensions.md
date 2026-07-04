@@ -63,6 +63,28 @@ assert repr(value(Forall(x + y > Val(3) for x in S1 for y in S2))) == "True"
 assert repr(value(Exists(x + y == Val(5) for x in S1 for y in S2))) == "True"
 ```
 
+## TLA+ binder names
+
+Generator forms create internal binder names by default.  Pass `name=` when the
+generated TLA<sup>+</sup> should use a specific readable binder name:
+
+<!-- name: test_quantifiers -->
+```python
+S = Set(1, 2, 3)
+positive = Forall((x > Val(0) for x in S), name="p")
+filtered = SetIf((x > Val(1) for x in S), name="p")
+doubled = Set((x * Val(2) for x in S), name="p")
+```
+
+For multiple `for` clauses, pass one name per binder:
+
+<!-- name: test_quantifiers -->
+```python
+S1 = Set(1, 2)
+S2 = Set(3, 4)
+all_distinct = Forall((x != y for x in S1 for y in S2), name=("p", "q"))
+```
+
 ## Quantifying over lists
 
 `Forall` and `Exists` (and the matching `.forall`/`.exists` methods) also range
@@ -132,6 +154,14 @@ domain = Set(1, 2, 3)
 squares = Map(x * x for x in domain)
 assert repr(value(squares))         == "Map(1 -> 1, 2 -> 4, 3 -> 9)"
 assert repr(value(squares[Val(2)])) == "4"
+```
+
+Like the other generator forms, `Map` accepts `name=` for the generated
+TLA<sup>+</sup> binder:
+
+<!-- name: test_quantifiers -->
+```python
+named_squares = Map((x * x for x in domain), name="p")
 ```
 
 The method form `.map_to(mapper)` on `SetExpr` is identical:

@@ -12,7 +12,18 @@ This guide uses the current shorthand annotations: `Param[T]`,
 forms are still accepted by Wunderspec, but new translations should prefer
 these shorthands.
 
-## 1. Translation mindset
+## 1. Preferred workflow
+
+Prefer using the Quint converter first:
+
+```sh
+wunderspec convert --from=spec.qnt --to=spec.py
+```
+
+Use the manual rules below to review, refine, and idiomatize the generated
+Wunderspec model, or when the converter does not yet cover a Quint construct.
+
+## 2. Translation mindset
 
 A good translation keeps the same:
 
@@ -28,7 +39,7 @@ A good translation may still change:
 - how tagged unions (`Option`, `Result`, ...) are represented (use `@union`)
 - embedded module imports (inline definitions from imported `.qnt` files)
 
-## 2. Minimal Wunderspec skeleton
+## 3. Minimal Wunderspec skeleton
 
 ```python
 from wunderspec import *
@@ -52,7 +63,7 @@ def step(c: Context[SpecState]):
     s.x = s.x + Val(1)
 ```
 
-## 3. Quint module elements
+## 4. Quint module elements
 
 | Quint | Wunderspec |
 |---|---|
@@ -77,7 +88,7 @@ Rule of thumb:
 - Quint type aliases (`type ViewNumber = int`) become Python type annotations
   or comments — no runtime objects needed.
 
-### 3.1 Handling imported Quint modules
+### 4.1 Handling imported Quint modules
 
 Quint specs often `import` definitions from other `.qnt` files. The recommended
 approach is to **inline** all imported definitions at the top of the Python
@@ -101,7 +112,7 @@ class Vote:
 This avoids creating additional Python modules for definitions that are
 conceptually part of a single flat specification.
 
-### 3.2 Fixing constants with `@instance`
+### 4.2 Fixing constants with `@instance`
 
 Quint `const` declarations become `Param[...]` fields in the `@state` class.
 To make a concrete parameter assignment reusable, annotate a no-argument
@@ -119,9 +130,9 @@ Rules of thumb:
   is the only way to supply a state prototype on the CLI.
 - Name each factory after the scenario it represents (`n5_f1`, `two_actors`).
 
-## 4. Expression primitives
+## 5. Expression primitives
 
-### 4.1 Literals and constructors
+### 5.1 Literals and constructors
 
 | Quint | Wunderspec |
 |---|---|
@@ -134,7 +145,7 @@ Rules of thumb:
 | `[k -> v]` (map literal) | `Map((k, v))` |
 | `List()` (empty sequence) | `List(T)` |
 
-### 4.2 Boolean and arithmetic operators
+### 5.2 Boolean and arithmetic operators
 
 | Quint | Wunderspec |
 |---|---|
@@ -146,7 +157,7 @@ Rules of thumb:
 | `<`, `<=`, `>`, `>=` | same operators |
 | `+`, `-`, `*`, `/`, `%` | same operators (`/` is integer division) |
 
-### 4.3 Sets
+### 5.3 Sets
 
 | Quint | Wunderspec |
 |---|---|
@@ -175,7 +186,7 @@ def is_quorum(subset, conf):
     return And(subset.issubset(conf), subset.size * 2 > conf.size)
 ```
 
-### 4.4 Maps (Quint records with `->`)
+### 5.4 Maps (Quint records with `->`)
 
 | Quint | Wunderspec |
 |---|---|
@@ -192,7 +203,7 @@ def is_quorum(subset, conf):
 inserts or updates. For a state map whose keyed assignment may add a new key,
 declare it `StateVar[dict[K, V], UPSERT]` (`UPSERT` from `wunderspec.machine`).
 
-### 4.5 Sequences/lists
+### 5.5 Sequences/lists
 
 | Quint | Wunderspec |
 |---|---|
@@ -204,7 +215,7 @@ declare it `StateVar[dict[K, V], UPSERT]` (`UPSERT` from `wunderspec.machine`).
 | `l.slice(i, j)` | `l[i:j]` |
 | `l.filter(x => P)` | `l.filter(lambda x: P)` |
 
-### 4.6 Records and `@record` types
+### 5.6 Records and `@record` types
 
 Quint `type` definitions with named fields map directly to Wunderspec `@record`
 classes. Field access uses the same dot notation.
@@ -232,7 +243,7 @@ v = Vote(view=view, block=block, sig=sig, kind=kind)
 v.view   # field access
 ```
 
-### 4.7 Record updates (Quint spread syntax)
+### 5.7 Record updates (Quint spread syntax)
 
 When the spread produces a **value** (a record to send, return, or feed into a
 larger expression), translate `{ ...rec, field: val }` with `.replace()`:
@@ -303,9 +314,11 @@ is expected to exist already. When translating a Quint update that may insert a
 new map entry, declare the field with the `UPSERT` marker:
 `StateVar[dict[K, V], UPSERT]`.
 
-### 4.8 Conditional expressions (`if/else`)
+### 5.8 Conditional expressions (`if/else`)
 
-Quint `if`/`else` in pure expressions becomes `Ite(cond, then_expr, else_expr)`:
+Quint `if`/`else` in pure expressions becomes
+`then_expr.if_(cond).else_(else_expr)`. Prefer this method form over
+`Ite(cond, then_expr, else_expr)`.
 
 Quint:
 ```quint
@@ -314,21 +327,21 @@ if (view < new_view) new_view else view
 
 Wunderspec:
 ```python
-Ite(self_rec.view < new_view, new_view, self_rec.view)
+new_view.if_(self_rec.view < new_view).else_(self_rec.view)
 ```
 
-Use `Ite` for conditional assignments inside actions when both branches modify
+Use a conditional value for assignments inside actions when both branches modify
 the same variable but you do not want to split the action:
 
 ```python
-s.store_certificate = Ite(
-    is_new_cert,
-    s.store_certificate.replace(id, s.store_certificate[id] | Set(cert)),
-    s.store_certificate,
+s.store_certificate = (
+    s.store_certificate.replace(id, s.store_certificate[id] | Set(cert))
+    .if_(is_new_cert)
+    .else_(s.store_certificate)
 )
 ```
 
-### 4.9 Quantifiers in invariants
+### 5.9 Quantifiers in invariants
 
 For invariants that universally quantify over multiple sets (e.g., all pairs of
 replicas and views), use the `Forall` generator form:
@@ -343,7 +356,7 @@ This is the direct analogue of Quint's nested `forall`:
 CORRECT.forall(id => VIEWS.forall(v => check(id, v)))
 ```
 
-### 4.10 `let ... in` and shared subexpressions
+### 5.10 `let ... in` and shared subexpressions
 
 Quint `val a = e ...` / `let a = e { ... }` becomes an ordinary Python local:
 `a = e`. If `e` is large and reused and you want it emitted **once** in the
@@ -353,7 +366,7 @@ compiled spec, bind it with `c.cache`:
 quorum = c.cache(votes & members, "quorum")
 ```
 
-### 4.11 Multisets / bags
+### 5.11 Multisets / bags
 
 Quint state that is conceptually a *multiset* (counts matter — messages can be
 duplicated or removed one copy at a time) maps to the user-space `Bag` ADT from
@@ -371,12 +384,12 @@ Bag(s.messages)[msg]                                  # how many copies
 For heterogeneous messages, wrap an envelope record around a `@union` payload
 (see §5.7 and `examples/etcdraft.py`).
 
-## 5. Action translation rules
+## 6. Action translation rules
 
 Quint actions describe guarded assignments. In Wunderspec, write guards with
 `c.assume(...)` and assignments on `c.state`.
 
-### 5.1 Guards (`all { guard, ... }`)
+### 6.1 Guards (`all { guard, ... }`)
 
 Quint:
 ```quint
@@ -398,7 +411,7 @@ def proposer_step(c: Context[MinimmitState], id: Expr, new_block: Expr):
     ...
 ```
 
-### 5.2 Primed assignments (`x' = e`)
+### 6.2 Primed assignments (`x' = e`)
 
 Quint uses `x' = e` for state updates inside actions. In Wunderspec, assign
 directly on `s`:
@@ -413,11 +426,11 @@ Wunderspec:
 s.sent_vote = s.sent_vote | Set(notarize_vote)
 ```
 
-### 5.3 `UNCHANGED` (implicit)
+### 6.3 `UNCHANGED` (implicit)
 
 Variables you do not assign remain unchanged. No explicit code is needed.
 
-### 5.4 Nested map/record updates
+### 6.4 Nested map/record updates
 
 **Prefer direct assignment on `s`** for state updates — map entries, nested
 paths, and record fields all assign directly. This is the idiomatic translation
@@ -453,11 +466,11 @@ s.store_vote[id] = s.store_vote[id] | votes
 ```
 
 `.replace(...)`/`.edit()` are for building a **value not bound to a state path** —
-a record to put in a message, a helper's return value, or a branch of an
-`Ite(...)`. When the target *is* a state path, write `s.x[k] = v`, not
+a record to put in a message, a helper's return value, or a branch of a
+conditional value. When the target *is* a state path, write `s.x[k] = v`, not
 `s.x = s.x.replace(k, v)`.
 
-### 5.5 Disjunction (`any { ... }`) in actions
+### 6.5 Disjunction (`any { ... }`) in actions
 
 Quint's `any { A, B, C }` becomes `c.alternatives()`:
 
@@ -485,7 +498,7 @@ def step(c: Context[MyState]):
 
 Alternative labels are stable strings; they appear in replay schedules.
 
-### 5.6 Existential choice (`nondet x = S.oneOf()`)
+### 6.6 Existential choice (`nondet x = S.oneOf()`)
 
 Quint:
 ```quint
@@ -552,7 +565,7 @@ with (
     s.sent_vote = s.sent_vote | byz_senders.map(lambda _s: byz_vote)
 ```
 
-### 5.7 The `Option` type — translate with `@union`
+### 6.7 The `Option` type — translate with `@union`
 
 Quint's `Option[T]` (variants `Some(payload)` and `None`) maps directly to a
 Wunderspec `@union` type. Define it once near the top of the file, after the
@@ -579,8 +592,9 @@ OptionCertificate.Some(cert)
 OptionCertificate.None_()
 ```
 
-**Building an option value in a pure function** — use `Ite` (both branches
-have the same `UnionSort`, so the types match):
+**Building an option value in a pure function** — use
+`then_value.if_(condition).else_(else_value)`. Both branches have the same
+`UnionSort`, so the types match:
 
 Quint:
 ```quint
@@ -603,13 +617,17 @@ def create_notarization(
         lambda v: (v.view == view) & (v.kind == Val(NOTARIZE_KIND)) & (v.block == block)
     )
     votes_count = similar_votes.size
-    cert_kind = Ite(votes_count >= L_quorum(s), Val(FINALIZATION_KIND), Val(NOTARIZATION_KIND))
-    cert = mk_certificate(view, block, similar_votes.map(lambda v: v.sig), id, cert_kind)
-    return Ite(                          # type: ignore[return-value]
-        votes_count >= M_quorum(s),
-        OptionCertificate.Some(cert),
-        OptionCertificate.None_(),
+    cert_kind = (
+        Val(FINALIZATION_KIND)
+        .if_(votes_count >= L_quorum(s))
+        .else_(NOTARIZATION_KIND)
     )
+    cert = mk_certificate(
+        view, block, similar_votes.map(lambda v: v.sig), id, cert_kind
+    )
+    return OptionCertificate.Some(cert).if_(votes_count >= M_quorum(s)).else_(
+        OptionCertificate.None_()
+    )  # type: ignore[return-value]
 ```
 
 **Pattern matching in a pure expression** — use `.match()`:
@@ -663,24 +681,24 @@ sort.
 block — even if one branch is a no-op (`pass`). Omitting a branch silently
 makes the split one-sided.
 
-### 5.8 Conditional state changes inside a single action
+### 6.8 Conditional state changes inside a single action
 
 When an action conditionally modifies a variable (no split desired), use
-`Ite()` directly as the assigned value:
+`then_value.if_(condition).else_(else_value)` as the assigned value:
 
 ```python
-s.sent_vote = Ite(
-    should_send_notarize_vote,
-    s.sent_vote | Set(mk_notarize(cert.view, id, cert.block)),
-    s.sent_vote,
+s.sent_vote = (
+    (s.sent_vote | Set(mk_notarize(cert.view, id, cert.block)))
+    .if_(should_send_notarize_vote)
+    .else_(s.sent_vote)
 )
 ```
 
 Use `c.split()` when the two branches have substantially different update
-patterns; use `Ite()` when you can express both outcomes as a single
-expression.
+patterns; use a conditional value when you can express both outcomes as a
+single expression.
 
-## 6. Invariants and properties
+## 7. Invariants and properties
 
 Keep invariants as pure functions over state decorated with `@invariant`:
 
@@ -690,7 +708,7 @@ def agreement(s: MinimmitState) -> BoolExpr:
     def check(id1: Expr, id2: Expr) -> BoolExpr:
         b1 = s.ghost_committed_blocks[id1]
         b2 = s.ghost_committed_blocks[id2]
-        n = b1.size.min(b2.size)
+        n = Min(b1.size, b2.size)
         return b1[:n] == b2[:n]
     return Forall(check(id1, id2) for id1 in s.CORRECT for id2 in s.CORRECT)
 ```
@@ -719,7 +737,7 @@ If a Quint spec is unbounded, add `Param` caps (e.g. `MaxView`) and guard the
 space-growing actions with `c.assume(s.view[id] < s.MaxView)` for bounded model
 checking; document them as the only deviations from the source.
 
-## 7. Helper function conventions
+## 8. Helper function conventions
 
 - Put `s: MyState` as the **first** argument of every helper that references state.
 - Pure helpers that do not reference state receive only their own arguments.
@@ -741,7 +759,7 @@ def is_view_notarized_votes(
         .size >= M_quorum(s)
 ```
 
-## 8. Naming and style conventions
+## 9. Naming and style conventions
 
 - Quint `camelCase` identifiers → Python `snake_case`.
 - Quint `SCREAMING_SNAKE` constants → Python module-level constants (no change needed).
@@ -752,7 +770,7 @@ def is_view_notarized_votes(
 - Inline imported Quint modules at the top of the Python file, separated by
   banner comments.
 
-## 9. Common pitfalls
+## 10. Common pitfalls
 
 - Do not use Python `and`/`or`/`not` with Wunderspec expressions; use `And`,
   `Or`, `~`.
@@ -766,8 +784,8 @@ def is_view_notarized_votes(
 - Prefer **direct assignment** for state updates: `s.m[k] = v`,
   `s.rec.field = v`, `s.m[i][j] = v`. Reserve `.replace`/`.insert`/`.edit` for
   building a value not bound to a state path (a message, a return value, an
-  `Ite` branch). Translate `map.set(k, v)` writing to state as `s.m[k] = v`, not
-  `s.m = s.m.replace(k, v)`.
+  conditional branch). Translate `map.set(k, v)` writing to state as
+  `s.m[k] = v`, not `s.m = s.m.replace(k, v)`.
 - `m.replace(k, v)` is replace-only (key must exist); use `m.insert(k, v)` to add
   a key, and `StateVar[dict[K, V], UPSERT]` for state maps that grow.
 - `expr.edit()` returns a builder whose updated value is `upd.result` — for a
@@ -776,7 +794,7 @@ def is_view_notarized_votes(
   the field as `StateVar[dict[K, V], UPSERT]` for insert-or-update behavior.
 - Use `with s.editing() as upd:` only when several updates must read the
   pre-update state atomically.
-- `Ite` takes three arguments: `Ite(condition, then_value, else_value)`.
+- Prefer `then_value.if_(condition).else_(else_value)` for conditional values.
 - Quint's `nondet x = S.oneOf()` picks one element; in Wunderspec use
   `c.one_of(S, "x")` — do not use `S.exists(...)` inside an action for this.
 - Quint's `nondet senders = S.powerset().oneOf()` picks a *subset*; use
@@ -786,7 +804,7 @@ def is_view_notarized_votes(
 - For parameterized specs (e.g., `CORRECT`, `REPLICA_KEYS`), define an
   `@instance` factory and run it with `--instance NAME`.
 
-## 10. Minimmit mapping example
+## 11. Minimmit mapping example
 
 ### `const`/`var` → `@state`
 
@@ -872,7 +890,7 @@ def step(c: Context[MinimmitState]):
         byzantine_replica_step(c)
 ```
 
-## 11. Further reading and open TODOs
+## 12. Further reading and open TODOs
 
 Worked translations: `examples/minimmit.py` (this guide's running example),
 `examples/etcdraft.py` (union messages + multiset bags + sequences), and

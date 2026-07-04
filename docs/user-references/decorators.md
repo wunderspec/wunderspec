@@ -13,8 +13,8 @@ decorators, grouped by purpose.
 | `@union` | class | Tagged variant constructor (`UnionExpr`) |
 | `@state` | class | State schema (variables + parameters) |
 | `@action` | function | Transition or initialisation action |
-| `@invariant` | function | Safety predicate (must always hold) |
-| `@example` | function | Reachability predicate (must eventually hold) |
+| `@invariant` | function | Safety predicate (must always hold); nested calls are extracted unless `inline=True` |
+| `@example` | function | Reachability predicate (must eventually hold); nested calls are extracted unless `inline=True` |
 | `@temporal` | function | Liveness property (`TemporalExpr`) |
 | `@coverage` | function | State-shape tracker for fuzzing / model checking |
 | `@instance` | function | Concrete parameter factory for a `@state` class |
@@ -251,8 +251,24 @@ def non_negative(s: CounterState) -> BoolExpr:
 ```
 
 The decorator sets `_is_invariant = True` on the function; the CLI uses this
-attribute to discover invariants automatically. No runtime behaviour is
-changed.
+attribute to discover invariants automatically.
+
+Nested `@invariant` and `@example` calls are extracted as named, labeled TLA+
+operators by default when you run `wunderspec convert`, so counterexamples can
+point at the nested predicate that failed. Pass `inline=True` to inline a
+predicate's body at nested call sites:
+
+```python
+@invariant(inline=True)
+def small_counter(s: CounterState) -> BoolExpr:
+    return s.counter <= Val(10)
+```
+
+Options:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `inline=True` | `False` | Inline nested calls instead of extracting a labeled TLA+ operator |
 
 ---
 
@@ -269,7 +285,9 @@ def reaches_five(s: CounterState) -> BoolExpr:
 ```
 
 Sets `_is_example = True`. Useful for checking that a target state is
-reachable, as opposed to checking that it is unreachable.
+reachable, as opposed to checking that it is unreachable. Like `@invariant`,
+nested calls are extracted and labeled by default in converted TLA+; use
+`@example(inline=True)` to inline a nested example predicate.
 
 ---
 

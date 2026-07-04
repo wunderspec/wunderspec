@@ -150,6 +150,48 @@ cond_expr = Val(1).if_(Val(3) > 2).else_(-1)
 assert repr(cond_expr) == "Ite(GT(Lit(3), Lit(2)), Lit(1), Lit(-1))"
 ```
 
+## Minimum and maximum
+
+`Max` and `Min` compute the maximum and minimum of integers. They accept either
+several integer arguments or a single set or list of integers with a mandatory
+`default=` seed. Both are pure syntactic sugar: the multi-argument form expands
+to nested `Ite`, while the collection form folds with `reduce` at runtime. When
+translated to TLA<sup>+</sup>, that collection reducer is rendered with
+`CHOOSE`, which is easier to use in TLAPS proofs.
+
+With several arguments, `Max(a, b)` expands to `Ite(b > a, b, a)`:
+
+<!-- name: test_integers -->
+```python
+assert repr(Max(Val(3), Val(7))) == "Ite(GT(Lit(7), Lit(3)), Lit(7), Lit(3))"
+assert repr(Min(Val(3), Val(7))) == "Ite(LT(Lit(7), Lit(3)), Lit(7), Lit(3))"
+```
+
+Raw integers are auto-coerced, and any number of arguments is allowed:
+
+<!-- name: test_integers -->
+```python
+assert repr(value(Max(3, 7))) == "7"
+assert repr(value(Max(3, 7, 2, 9, 1))) == "9"
+assert repr(value(Min(3, 7, 2, 9, 1))) == "1"
+```
+
+A single set or list of integers is aggregated with the required `default=`
+seed. The seed is the initial accumulator, so it is also returned for an empty
+collection:
+
+<!-- name: test_integers -->
+```python
+assert repr(value(Max(Set(3, 7, 2), default=0))) == "7"
+assert repr(value(Min(Set(3, 7, 2), default=10))) == "2"
+assert repr(value(Max(List(3, 7, 2), default=0))) == "7"
+assert repr(value(Min(List(3, 7, 2), default=10))) == "2"
+
+s = Set(1, 2).difference(Set(1, 2))
+max_or_zero = Max(s, default=0)
+assert repr(value(max_or_zero)) == "0"
+```
+
 
 [modulo]: https://github.com/apalache-mc/apalache/issues/331
 [TLC]: https://lamport.azurewebsites.net/tla/tools.html?unhideBut=hide-tlc&unhideDiv=tlc

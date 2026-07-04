@@ -559,7 +559,7 @@
       </section>
 
       <!-- Integers -->
-      <section class="card" data-title="integers arithmetic comparisons interval upto inclusive integer set">
+      <section class="card" data-title="integers arithmetic comparisons interval upto inclusive integer set min max minimum maximum">
         <header>
           <h2>Integers</h2>
           <span class="hint">IntExpr</span>
@@ -572,6 +572,10 @@
           <div class="item">
             <div class="sig">x == y   x != y   x &lt; y   x &lt;= y   x &gt; y   x &gt;= y</div>
             <div class="desc">Comparison operators; return <span class="sig">BoolExpr</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Max(a, b, ...)   Min(a, b, ...)</div>
+            <div class="desc">Maximum / minimum of several integers; for a set/list use <span class="sig">Max(s, default=d)</span></div>
           </div>
           <div class="item">
             <span class="sig">Set(lo, ..., hi)</span>
@@ -589,7 +593,7 @@
       </section>
 
       <!-- Sets -->
-      <section class="card" data-title="sets set contains in union intersect difference issubset subset superset map filter exists forall reduce subsets flatten flattened choose size is_empty Ints UnsignedInts interval upto">
+      <section class="card" data-title="sets set contains in union intersect difference issubset subset superset map filter exists forall reduce subsets flatten flattened choose size is_empty Ints UnsignedInts interval upto min max minimum maximum">
         <header>
           <h2>Sets</h2>
           <span class="hint">Immutable; may be infinite</span>
@@ -680,6 +684,10 @@
             <div class="desc">Pick one element satisfying <span class="sig">P</span> (deterministic)</div>
           </div>
           <div class="item">
+            <div class="sig">Max(S, default=d)   Min(S, default=d)</div>
+            <div class="desc">Largest / smallest integer in <span class="sig">S</span>; <span class="sig">d</span> is the reduce seed</div>
+          </div>
+          <div class="item">
             <div class="sig">S.size</div>
             <div class="desc">Cardinality (finite sets only)</div>
           </div>
@@ -722,6 +730,10 @@
             <div class="desc">Multiple binders — ranges over the Cartesian product</div>
           </div>
           <div class="item">
+            <div class="sig">Forall((P(x) for x in S), name="p")</div>
+            <div class="desc">Choose readable TLA+ binder names; use <span class="sig">name=("p", "q")</span> for multiple binders</div>
+          </div>
+          <div class="item">
             <div class="sig">Forall(P(x) for x in lst)</div>
             <div class="desc">Over a list: binds <span class="sig">x</span> to each element in order — same as <span class="sig">lst.forall(lambda x: P(x))</span></div>
           </div>
@@ -735,13 +747,13 @@
           </div>
           <div class="item">
             <div class="sig">Map(f(x) for x in domain)</div>
-            <div class="desc">[ x ↦ f(x) ] — map expression; equivalent to <span class="sig">domain.map_to(lambda x: f(x))</span></div>
+            <div class="desc">[ x ↦ f(x) ] — map expression; accepts <span class="sig">name=</span>; equivalent to <span class="sig">domain.map_to(lambda x: f(x))</span></div>
           </div>
         </div>
       </section>
 
       <!-- Lists -->
-      <section class="card" data-title="lists List range size append replace slice filter reduce keys is_empty">
+      <section class="card" data-title="lists List range size append replace slice filter reduce keys is_empty min max minimum maximum">
         <header>
           <h2>Lists</h2>
           <span class="hint">Ordered, 0-based, immutable</span>
@@ -800,6 +812,10 @@
           <div class="item">
             <div class="sig">lst.forall(lambda x: P(x))</div>
             <div class="desc">True if every element satisfies <span class="sig">P</span></div>
+          </div>
+          <div class="item">
+            <div class="sig">Max(lst, default=d)   Min(lst, default=d)</div>
+            <div class="desc">Largest / smallest integer in <span class="sig">lst</span>; <span class="sig">d</span> is the reduce seed</div>
           </div>
           <div class="item">
             <div class="sig">lst.size</div>
@@ -1045,12 +1061,12 @@ class Flag:
             <div class="desc">Transition action; <span class="sig">init</span> marks init; <span class="sig">inline=False</span> is required for fairness/Enabled; <span class="sig">coerce=False</span> requires Expr arguments</div>
           </div>
           <div class="item">
-            <div class="sig">@invariant</div>
-            <div class="desc">Safety predicate — must hold in every reachable state</div>
+            <div class="sig">@invariant   @invariant(inline=True)</div>
+            <div class="desc">Safety predicate; converted nested calls are labeled by default, or inlined with <span class="sig">inline=True</span></div>
           </div>
           <div class="item">
-            <div class="sig">@example</div>
-            <div class="desc">Reachability predicate — checker searches for a state where it holds</div>
+            <div class="sig">@example   @example(inline=True)</div>
+            <div class="desc">Reachability predicate; converted nested calls are labeled by default, or inlined with <span class="sig">inline=True</span></div>
           </div>
           <div class="item">
             <div class="sig">@temporal</div>

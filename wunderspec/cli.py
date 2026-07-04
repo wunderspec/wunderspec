@@ -328,6 +328,8 @@ def _with_apalache_command(args: argparse.Namespace, reporter: ConsoleReporter) 
             out_itf=args.out_itf,
             max_memory=args.max_memory,
             no_print_trace=args.no_print_trace,
+            coverage=args.coverage,
+            verbose=args.verbose,
         ),
         reporter=reporter,
     )
@@ -783,6 +785,17 @@ def main() -> None:
         type=int,
         default=1,
         help="Stop after this many violations or examples (default: 1)",
+    )
+    apalache_parser.add_argument(
+        "--coverage",
+        default=None,
+        metavar="NAME",
+        help="Name of a @coverage function to use as Apalache's state view",
+    )
+    apalache_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Stream Apalache output while it runs",
     )
     apalache_parser.add_argument(
         "--out-itf",

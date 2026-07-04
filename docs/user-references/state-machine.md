@@ -320,7 +320,12 @@ def non_negative(s: CounterState) -> BoolExpr:
     return s.counter >= Val(0)
 
 assert getattr(non_negative, "_is_invariant") is True
+assert getattr(non_negative, "_inline") is False
 ```
+
+When `wunderspec convert` sees nested `@invariant` and `@example` calls, it
+extracts them as named, labeled TLA+ operators by default. Use
+`@invariant(inline=True)` when you want a nested predicate call inlined instead.
 
 ### `@example`
 
@@ -334,7 +339,12 @@ def reaches_five(s: CounterState) -> BoolExpr:
     return s.counter == Val(5)
 
 assert getattr(reaches_five, "_is_example") is True
+assert getattr(reaches_five, "_inline") is False
 ```
+
+`@example(inline=True)` has the same conversion behavior as
+`@invariant(inline=True)`: nested calls are inlined instead of extracted as
+separate labeled TLA+ operators.
 
 When you check an `@example` with `run`, `check`, or `fuzz`, finding a witness
 state prints `Example found …` and exits with code `2`. Finding none prints
@@ -474,6 +484,7 @@ uv run wunderspec with-tlc \
 uv run wunderspec with-apalache \
     --init=init --step=step \
     --property=non_negative \
+    --coverage=state_cov \
     --instance=small \
     --max-steps=20 \
     counter.py

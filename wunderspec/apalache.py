@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import threading
 import urllib.request
 from pathlib import Path
 from typing import Any, Literal
@@ -105,12 +106,72 @@ def _find_counterexample_itfs(run_dir: Path) -> list[Path]:
     return sorted(run_dir.glob("violation*.itf.json"), key=_violation_index)
 
 
+def _run_apalache_process(
+    command: list[str],
+    *,
+    cwd: Path,
+    log_path: Path,
+    reporter: Reporter,
+    verbose: bool,
+) -> subprocess.CompletedProcess[str]:
+    stdout_parts: list[str] = []
+    stderr_parts: list[str] = []
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with log_path.open("w") as log_file:
+        log_lock = threading.Lock()
+        proc = subprocess.Popen(
+            command,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+
+        def write_log(line: str) -> None:
+            with log_lock:
+                log_file.write(line)
+                log_file.flush()
+
+        def read_stdout() -> None:
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                stdout_parts.append(line)
+                write_log(line)
+                if verbose:
+                    reporter.out(line.rstrip("\n"))
+
+        def read_stderr() -> None:
+            assert proc.stderr is not None
+            for line in proc.stderr:
+                stderr_parts.append(line)
+                write_log(line)
+                if verbose:
+                    reporter.hint(line.rstrip("\n"))
+
+        stdout_thread = threading.Thread(target=read_stdout)
+        stderr_thread = threading.Thread(target=read_stderr)
+        stdout_thread.start()
+        stderr_thread.start()
+        returncode = proc.wait()
+        stdout_thread.join()
+        stderr_thread.join()
+
+    return subprocess.CompletedProcess(
+        args=command,
+        returncode=returncode,
+        stdout="".join(stdout_parts),
+        stderr="".join(stderr_parts),
+    )
+
+
 def run_apalache(request: ApalacheRequest, reporter: Reporter) -> ApalacheResult:
     """Generate TLA+ for a Wunderspec instance and run Apalache."""
     if request.property is None:
         _fatal("--property is required")
-    if request.max_steps < 1:
-        _fatal("--max-steps must be at least 1")
+    if request.max_steps < 0:
+        _fatal("--max-steps must be >= 0")
     if request.simulate and request.max_samples < 1:
         _fatal("--max-samples must be at least 1")
     if request.max_findings < 1:
@@ -175,6 +236,7 @@ def run_apalache(request: ApalacheRequest, reporter: Reporter) -> ApalacheResult
     init_op = to_camel_case(request.init)
     step_op = to_camel_case(request.step)
     property_op = to_camel_case(property_func_name)
+    coverage_op: str | None = None
 
     for def_name, func, is_init in (
         (request.init, init_func, True),
@@ -217,6 +279,19 @@ def run_apalache(request: ApalacheRequest, reporter: Reporter) -> ApalacheResult
         )
     nodes[property_op] = property_node
 
+    if request.coverage is not None:
+        coverage_func_name = request.coverage
+        coverage_func = get_definition(module, coverage_func_name)
+        if not getattr(coverage_func, "_is_coverage", False):
+            _fatal(f"'{coverage_func_name}' is not decorated with @coverage")
+        reporter.info(f"Building AST for coverage: {coverage_func_name}")
+        try:
+            coverage_node = build_expr_ast(state_cls, coverage_func)
+        except Exception as e:
+            _fatal(f"Error building AST for expression '{coverage_func_name}': {e}")
+        coverage_op = to_camel_case(coverage_func_name)
+        nodes[coverage_op] = coverage_node
+
     fixed_params = _resolve_instance_params(module, state_cls, request.instance)
     out_dir, is_temp_dir = _apalache_output_dir(request)
     base_module = source_path.stem
@@ -230,6 +305,7 @@ def run_apalache(request: ApalacheRequest, reporter: Reporter) -> ApalacheResult
     sink = _ItfNdjsonSink(request.out_itf)
     try:
         reporter.info(f"Generating TLA+ module: {base_module}")
+        tla_nodes: dict[str, Any] = dict(nodes)
         base_tla = to_tla(
             state_cls,
             base_module,
@@ -237,7 +313,7 @@ def run_apalache(request: ApalacheRequest, reporter: Reporter) -> ApalacheResult
             init_ops={init_op},
             text_width=79,
             text_indent=4,
-            **nodes,
+            **tla_nodes,
         )
         base_path.write_text(base_tla)
 
@@ -274,27 +350,36 @@ def run_apalache(request: ApalacheRequest, reporter: Reporter) -> ApalacheResult
         ]
         if request.simulate:
             command.append(f"--max-run={request.max_samples}")
+            if coverage_op is not None:
+                command.append(f"--view={coverage_op}")
         else:
             command.append(f"--max-error={request.max_findings}")
-            if request.max_findings > 1:
+            if coverage_op is not None:
+                command.append(f"--view={coverage_op}")
+            elif request.max_findings > 1:
                 # Apalache needs a state view to enumerate several distinct
                 # counterexamples; the wrapper's Vars tuple is the full state.
                 command.append("--view=Vars")
         command.append(wrapper_path.name)
         reporter.info("Running Apalache")
+        log_path = run_dir / "apalache.log"
+        reporter.info(f"Apalache log: {log_path}")
+        if is_temp_dir:
+            reporter.info("Use --keep-files or --out-dir to keep the log after success")
         try:
-            completed = subprocess.run(
+            completed = _run_apalache_process(
                 command,
                 cwd=out_dir,
-                capture_output=True,
-                text=True,
+                log_path=log_path,
+                reporter=reporter,
+                verbose=request.verbose,
             )
         except FileNotFoundError:
             _fatal(f"Java executable not found: {request.java}")
 
-        if completed.stdout:
+        if completed.stdout and not request.verbose:
             reporter.out(completed.stdout.rstrip())
-        if completed.stderr:
+        if completed.stderr and not request.verbose:
             reporter.hint(completed.stderr.rstrip())
 
         artifacts = [base_path.name, wrapper_path.name]

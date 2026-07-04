@@ -209,6 +209,7 @@ class ActionCallNode(ActionNode):
         body: "ActionNode",
         *,
         placeholder_body: bool = False,
+        comment: str | None = None,
     ):
         """
         Create an action call node.
@@ -226,6 +227,7 @@ class ActionCallNode(ActionNode):
         # ``Enabled(named_action, ...)`` before native evaluation resolves the
         # named action body from a spec-level action registry.
         self.placeholder_body = placeholder_body
+        self.comment = comment
 
     def __repr__(self):
         args_str = ", ".join(repr(a) for a in self.args)

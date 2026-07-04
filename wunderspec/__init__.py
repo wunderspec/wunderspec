@@ -98,6 +98,8 @@ from .lang import (
     Ite,
     List,
     Map,
+    Max,
+    Min,
     Not,
     NotT,
     Or,
@@ -144,7 +146,7 @@ from .random_walk import state_view
 from .source_tracking import enable_source_tracking
 from .submachine import SubMachine
 
-__version__ = "0.134.1"
+__version__ = "0.136.1"
 
 __all__ = [
     # Constructor functions
@@ -179,6 +181,8 @@ __all__ = [
     "Implies",
     "ImpliesT",
     "Ite",
+    "Max",
+    "Min",
     "Var",
     # Generator expression functions
     "Forall",

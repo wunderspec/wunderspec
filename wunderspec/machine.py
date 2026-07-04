@@ -6,6 +6,8 @@ Igor Konnov, 2025-2026
 
 import inspect
 from abc import ABC
+from contextlib import contextmanager
+from contextvars import ContextVar
 from enum import Enum
 from functools import wraps
 from typing import (
@@ -25,6 +27,7 @@ from typing import (
 from typing_extensions import Self, TypeAliasType
 from typing_extensions import TypeVar as TypeVarExt
 
+from wunderspec.ast.ast import ExprCallNode, Node
 from wunderspec.ast.sorts import RecordSort, sort_of
 from wunderspec.expr import BoolExpr  # noqa: F401 (used in docstring examples)
 from wunderspec.expr import (
@@ -62,6 +65,99 @@ class UPSERT:
 
 _AnnotationT = TypeVar("_AnnotationT")
 _MarkerT = TypeVarExt("_MarkerT", default=Any)
+_predicate_expr_ops: ContextVar[dict[int, str] | None] = ContextVar(
+    "_predicate_expr_ops", default=None
+)
+_suppressed_predicate_ids: ContextVar[frozenset[int]] = ContextVar(
+    "_suppressed_predicate_ids", default=frozenset()
+)
+
+
+def _is_state_like(value: Any) -> bool:
+    return (
+        hasattr(value, "_params")
+        and isinstance(getattr(value, "_params"), tuple)
+        and hasattr(value, "_vars")
+        and isinstance(getattr(value, "_vars"), tuple)
+        and callable(getattr(value, "_asdict", None))
+    )
+
+
+def _is_state_view_like(value: Any) -> bool:
+    return (
+        hasattr(value, "_mapping")
+        and hasattr(value, "_params")
+        and callable(getattr(value, "__getitem__", None))
+    )
+
+
+@contextmanager
+def predicate_expr_extraction(
+    ops: dict[Callable[..., Any], str],
+    *,
+    suppress: Callable[..., Any] | None = None,
+):
+    id_ops = {id(func): op_name for func, op_name in ops.items()}
+    suppressed = frozenset({id(suppress)} if suppress is not None else ())
+    labels_token = _predicate_expr_ops.set(id_ops)
+    suppressed_token = _suppressed_predicate_ids.set(suppressed)
+    try:
+        yield
+    finally:
+        _suppressed_predicate_ids.reset(suppressed_token)
+        _predicate_expr_ops.reset(labels_token)
+
+
+def _predicate_expr_call(
+    wrapper: Callable[..., Any],
+    func: Callable[..., Any],
+    op_name: str,
+    *args: Any,
+    **kwargs: Any,
+) -> Expr:
+    sig = inspect.signature(wrapper)
+    bound = sig.bind(*args, **kwargs)
+    bound.apply_defaults()
+
+    actual_arg_nodes: list[Node] = []
+    param_names: list[str] = []
+    call_args: list[Any] = []
+    call_kwargs: dict[str, Any] = {}
+
+    for param_name, param in sig.parameters.items():
+        if param_name not in bound.arguments:
+            continue
+        arg_value = bound.arguments[param_name]
+        if _is_state_like(arg_value) or _is_state_view_like(arg_value):
+            call_arg = arg_value
+        else:
+            arg_expr = coerce_expr(arg_value)
+            actual_arg_nodes.append(arg_expr.node)
+            param_names.append(param_name)
+            call_arg = VarExpr(param_name, arg_expr.sort)
+
+        if param.kind in (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        ):
+            call_args.append(call_arg)
+        elif param.kind is inspect.Parameter.VAR_POSITIONAL:
+            call_args.extend(call_arg)
+        elif param.kind is inspect.Parameter.KEYWORD_ONLY:
+            call_kwargs[param_name] = call_arg
+        elif param.kind is inspect.Parameter.VAR_KEYWORD:
+            call_kwargs.update(call_arg)
+
+    result = coerce_expr(func(*call_args, **call_kwargs))
+    return expr_from_node(
+        ExprCallNode(
+            op_name,
+            tuple(actual_arg_nodes),
+            result.node,
+            tuple(param_names),
+            comment=inspect.getdoc(wrapper),
+        )
+    )
 
 
 class _AssignableStateExpr(Expr):
@@ -760,35 +856,76 @@ class _StateEditSession:
             self._builder.apply()
 
 
-def invariant(func: _F) -> _F:
+@overload
+def invariant(func: _F) -> _F: ...
+
+
+@overload
+def invariant(func: None = None, *, inline: bool = False) -> Callable[[_F], _F]: ...
+
+
+def invariant(
+    func: _F | None = None, *, inline: bool = False
+) -> _F | Callable[[_F], _F]:
     """A decorator to mark a function as an invariant of a state machine.
 
-    Currently serves as documentation; no special runtime semantics are attached.
     Sets the ``_is_invariant`` attribute to ``True`` on the decorated function
-    so tooling can detect it without importing the module.
+    so tooling can detect it without importing the module. During TLA+
+    conversion, nested calls are preserved as labeled expression operators by
+    default; pass ``inline=True`` to inline nested calls.
 
     Example:
         @invariant
         def safety(s: MyState) -> BoolExpr:
             return s.x >= Val(0)
     """
-    setattr(func, "_is_invariant", True)
-    return func
+    if func is not None:
+        return cast(_F, _predicate_wrapper(func, "_is_invariant", inline=inline))
+    return lambda fn: cast(_F, _predicate_wrapper(fn, "_is_invariant", inline=inline))
 
 
-def example(func: _F) -> _F:
+@overload
+def example(func: _F) -> _F: ...
+
+
+@overload
+def example(func: None = None, *, inline: bool = False) -> Callable[[_F], _F]: ...
+
+
+def example(func: _F | None = None, *, inline: bool = False) -> _F | Callable[[_F], _F]:
     """A decorator to mark a function as an example of a state machine.
 
     An example is satisfied when the predicate evaluates to true in an explored
-    state. Tooling treats it as the dual of ``@invariant``.
+    state. Tooling treats it as the dual of ``@invariant``. During TLA+
+    conversion, nested calls are preserved as labeled expression operators by
+    default; pass ``inline=True`` to inline nested calls.
 
     Example:
         @example
         def reaches_one(s: MyState) -> BoolExpr:
             return s.x == Val(1)
     """
-    setattr(func, "_is_example", True)
-    return func
+    if func is not None:
+        return cast(_F, _predicate_wrapper(func, "_is_example", inline=inline))
+    return lambda fn: cast(_F, _predicate_wrapper(fn, "_is_example", inline=inline))
+
+
+def _predicate_wrapper(
+    func: Callable[..., Any], marker: str, *, inline: bool
+) -> Callable[..., Any]:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        ops = _predicate_expr_ops.get()
+        suppressed = _suppressed_predicate_ids.get()
+        if ops is not None and id(wrapper) in ops and id(wrapper) not in suppressed:
+            return _predicate_expr_call(
+                wrapper, func, ops[id(wrapper)], *args, **kwargs
+            )
+        return func(*args, **kwargs)
+
+    setattr(wrapper, marker, True)
+    setattr(wrapper, "_inline", inline)
+    return wrapper
 
 
 def temporal(func: _F) -> _F:
@@ -882,12 +1019,40 @@ def instance(func: _F) -> _F:
     return func
 
 
+def get_wunderspec_exports(module: object) -> tuple[str, ...] | None:
+    """Return explicit Wunderspec exports, if the module defines them."""
+    if not hasattr(module, "__wunderspec_all__"):
+        return None
+
+    exports = getattr(module, "__wunderspec_all__")
+    if not isinstance(exports, (list, tuple)):
+        raise TypeError("__wunderspec_all__ must be a list or tuple of names")
+
+    names: list[str] = []
+    for item in exports:
+        if not isinstance(item, str):
+            raise TypeError("__wunderspec_all__ entries must be strings")
+        if not hasattr(module, item):
+            raise AttributeError(f"__wunderspec_all__ references missing name: {item}")
+        names.append(item)
+    return tuple(names)
+
+
 def find_instance_factories(module: object) -> list[tuple[str, Callable[..., Any]]]:
     """Find all @instance-decorated factory functions in a module.
 
-    Returns a list of (name, func) pairs for functions where ``_is_instance``
-    is True and the function was defined in the module (not imported).
+    If ``__wunderspec_all__`` is present, imported factories explicitly listed
+    there are included. Otherwise, only module-local factories are returned.
     """
+    exported_names = get_wunderspec_exports(module)
+    if exported_names is not None:
+        return [
+            (name, obj)
+            for name in exported_names
+            if callable(obj := getattr(module, name))
+            and getattr(obj, "_is_instance", False)
+        ]
+
     module_name = getattr(module, "__name__", None)
     results: list[tuple[str, Callable[..., Any]]] = []
     for name, obj in inspect.getmembers(module, inspect.isfunction):

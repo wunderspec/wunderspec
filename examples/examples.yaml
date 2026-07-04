@@ -70,6 +70,13 @@ examples:
         step: step
       - init: init_with_faults
         step: step
+  - file: tendermint_single.py
+    instances: n4_t1_f0
+    invariants: assumptions_hold type_ok agreement validity accountability
+    examples: >-
+      agreement_or_amnesia never_undecided_in_max_round no_agreement
+      show_me_amnesia_without_equivocation
+    timeout: 30
   - file: ledger.py
     instances: tiny_ledger
     invariants: no_total_change

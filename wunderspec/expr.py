@@ -84,14 +84,36 @@ _gen_ctx = threading.local()
 class _GeneratorContext:
     """Tracks variable bindings during generator expression consumption."""
 
-    def __init__(self):
+    def __init__(self, names: tuple[str, ...] | None = None):
         self.bindings: list[tuple["Expr", "Expr"]] = []  # (variable, domain)
+        self.names = names
+
+    def var(self, default_prefix: str, sort: Sort) -> "VarExpr":
+        index = len(self.bindings)
+        if self.names is None:
+            return VarExpr(fresh_name(default_prefix), sort)
+        if index >= len(self.names):
+            raise ValueError(
+                f"name has {len(self.names)} entries, but the generator has more bindings"
+            )
+        name = self.names[index]
+        return VarExpr(name, sort, unique_name=fresh_name(name), tla_name=name)
 
 
-def _push_gen_ctx() -> _GeneratorContext:
+def _push_gen_ctx(names: tuple[str, ...] | None = None) -> _GeneratorContext:
     if not hasattr(_gen_ctx, "stack"):
         _gen_ctx.stack = []
-    ctx = _GeneratorContext()
+    if names is not None:
+        active_names = {
+            name
+            for ctx in _gen_ctx.stack
+            for name in (() if ctx.names is None else ctx.names)
+        }
+        duplicate = active_names.intersection(names)
+        if duplicate:
+            names_str = ", ".join(sorted(duplicate))
+            raise ValueError(f"duplicate active generator name(s): {names_str}")
+    ctx = _GeneratorContext(names)
     _gen_ctx.stack.append(ctx)
     return ctx
 
@@ -396,13 +418,13 @@ class Expr:
             ctx = _current_gen_ctx()
             if ctx is not None:
                 if isinstance(self.sort, SetSort):
-                    var = VarExpr(fresh_name("_v"), self.sort.elem_sort)
+                    var = ctx.var("_v", self.sort.elem_sort)
                     ctx.bindings.append((var, self))
                     yield var
                     return
                 if isinstance(self.sort, ListSort):
                     # Quantify over the index set; bind the element to self[idx].
-                    idx = VarExpr(fresh_name("_idx"), IntSort())
+                    idx = ctx.var("_idx", IntSort())
                     lst = ListExpr(self._node)
                     ctx.bindings.append((idx, lst.keys))
                     yield lst._getitem(idx)
@@ -2531,7 +2553,12 @@ class VarExpr(Expr):
     _name: str
 
     def __new__(  # type: ignore[misc]
-        cls, name: str, sort: Sort, unique_name: str | None = None, **extra: Any
+        cls,
+        name: str,
+        sort: Sort,
+        unique_name: str | None = None,
+        tla_name: str | None = None,
+        **extra: Any,
     ) -> Expr:
         """
         Create a new variable expression of the appropriate type based on sort.
@@ -2557,12 +2584,15 @@ class VarExpr(Expr):
                     "unique_name": property(
                         lambda self: getattr(self._node, "unique_name", None)
                     ),
+                    "tla_name": property(
+                        lambda self: getattr(self._node, "tla_name", None)
+                    ),
                 },
             )
             VarExpr._CLASS_CACHE[key] = var_cls
 
         obj = super().__new__(var_cls)  # type: ignore
-        obj._node = VarNode(name, sort, unique_name=unique_name)
+        obj._node = VarNode(name, sort, unique_name=unique_name, tla_name=tla_name)
         obj._name = name
         for k, v in extra.items():
             setattr(obj, f"_{k}", v)

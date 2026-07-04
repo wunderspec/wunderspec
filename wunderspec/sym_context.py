@@ -45,6 +45,7 @@ class ExtractedActionDef:
     param_names: tuple[str, ...]
     param_sorts: tuple[Sort, ...]
     body: ActionNode
+    comment: str | None = None
 
 
 # Type alias for extracted action definitions: action_name -> definition
@@ -388,6 +389,7 @@ class SymbolicContext(Context[State]):
                 param_names=param_names,
                 param_sorts=param_sorts,
                 body=action_body,
+                comment=inspect.getdoc(action_func),
             )
 
         # Create argument nodes from the original Expr arguments passed
@@ -409,7 +411,12 @@ class SymbolicContext(Context[State]):
                 body_for_call = ActionLetNode(param_name, arg_node, body_for_call)
 
         # Emit ActionCallNode to the parent level
-        call_node = ActionCallNode(action_name, arg_nodes, body_for_call)
+        call_node = ActionCallNode(
+            action_name,
+            arg_nodes,
+            body_for_call,
+            comment=inspect.getdoc(action_func),
+        )
 
         # Set source_span from the action function's definition location
         wrapped = getattr(action_func, "__wrapped__", action_func)

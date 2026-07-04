@@ -307,6 +307,7 @@ def run_tlc(request: TlcRequest, reporter: Reporter) -> TlcResult:
     sink = _ItfNdjsonSink(request.out_itf)
     try:
         reporter.info(f"Generating TLA+ module: {base_module}")
+        tla_nodes: dict[str, Any] = dict(nodes)
         base_tla = to_tla(
             state_cls,
             base_module,
@@ -314,7 +315,7 @@ def run_tlc(request: TlcRequest, reporter: Reporter) -> TlcResult:
             init_ops={init_op},
             text_width=79,
             text_indent=4,
-            **nodes,
+            **tla_nodes,
         )
         base_path.write_text(base_tla)
 

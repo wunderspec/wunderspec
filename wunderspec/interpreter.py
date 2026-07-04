@@ -1480,11 +1480,14 @@ def eval_bool_node(e: AlgebraNode, env: Env) -> BoolValue:
             if len(e.args) != 2:
                 raise ValueError(f"Implies expects 2 arguments, got {len(e.args)}")
             left = value(e.args[0], env)
-            right = value(e.args[1], env)
-            if type(left) is not BoolValue or type(right) is not BoolValue:
+            if type(left) is not BoolValue:
                 raise ValueError("Expected BoolValue arguments")
-            # A => B is equivalent to (not A) or B
-            return BoolValue((not left.value) or right.value)
+            if not left.value:
+                return BoolValue(True)
+            right = value(e.args[1], env)
+            if type(right) is not BoolValue:
+                raise ValueError("Expected BoolValue arguments")
+            return BoolValue(right.value)
 
         case AlgebraOp.IFF:
             if len(e.args) != 2:

@@ -172,12 +172,21 @@ class VarNode(Node):
     can be determined by checking its sort.
     """
 
-    def __init__(self, name: str, sort: Sort, unique_name: str | None = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        sort: Sort,
+        unique_name: str | None = None,
+        tla_name: str | None = None,
+    ) -> None:
         super().__init__(sort)
         self.name = name
         # Internal binder identity used by interpreters to avoid variable capture.
         # Keep this out of string/repr/equality to preserve user-facing behavior.
         self.unique_name = unique_name
+        # Optional display name used by the TLA+ backend. This is separate from
+        # unique_name so generated code can be readable without losing identity.
+        self.tla_name = tla_name
 
     def __str__(self):
         """Short format for display."""
@@ -249,12 +258,15 @@ class ExprCallNode(Node):
         args: tuple[Node, ...],
         body: Node,
         param_names: tuple[str, ...],
+        *,
+        comment: str | None = None,
     ):
         super().__init__(body.sort)
         self.op_name = op_name
         self.args = args  # actual arg nodes at call site
         self.body = body  # definition body using VarNodes for params
         self.param_names = param_names
+        self.comment = comment
 
     def __str__(self):
         args_str = ", ".join(str(a) for a in self.args)

@@ -332,14 +332,16 @@ key. See §5.7 for dispatching on the tag inside an action, and
 
 | TLA+ | Wunderspec |
 |---|---|
-| `IF p THEN a ELSE b` | `Ite(p, a, b)` or `a.if_(p).else_(b)` |
+| `IF a THEN b ELSE c` | `b.if_(a).else_(c)` |
 
-`Ite` auto-coerces raw literal branches; both branches must have the same sort.
-Use a conditional *value* to fold a one-variable `EXCEPT`-with-`IF` into a single
-assignment instead of splitting the action:
+Prefer the method form `b.if_(a).else_(c)` over `Ite(a, b, c)`. It keeps the
+then-branch visually first, like the TLA+ source, and auto-coerces raw literal
+branches. Both branches must have the same sort. Use a conditional *value* to
+fold a one-variable `EXCEPT`-with-`IF` into a single assignment instead of
+splitting the action:
 
 ```python
-s.votes_granted[i] = Ite(granted, s.votes_granted[i] | Set(j), s.votes_granted[i])
+s.votes_granted[i] = (s.votes_granted[i] | Set(j)).if_(granted).else_(s.votes_granted[i])
 ```
 
 ### 4.9 Powersets, function sets, and quorums
@@ -397,18 +399,26 @@ s.messages = Bag(s.messages).remove_one(m).as_map     # Discard(m)
 `Ready(i)` action flushing one server's pending bag into the network — and
 duplicate/drop fault actions that rely on the multiplicity count.
 
-### 4.11 `Min`/`Max` of a set
+### 4.11 `Min`/`Max`
 
-There is no built-in `Min`/`Max`; fold with `reduce`. For a set of non-negative
-integers, `MaxOrZero(S)` (0 when empty) is:
+Use the built-in `Max`/`Min`. They take either several integers or a single set
+or list of integers with a mandatory `default=` seed:
+
+```python
+Max(a, b)        # Max of two values  -> b.if_(b > a).else_(a)
+Max(a, b, c)     # Max of several values
+Max(s_set, default=0)       # Max of a set of integers  (TLA: Max(S))
+Min(s_list, default=10)     # Min of a list of integers
+```
+
+For collection form, `default` is the runtime reduce seed. The TLA+ backend
+renders this `Max`/`Min` collection reducer with `CHOOSE`. For `MaxOrZero(S)`
+(0 when empty), pass `default=0`:
 
 ```python
 def max_or_zero(s_set):
-    return s_set.reduce(lambda acc, x: Ite(x > acc, x, acc), 0)
+    return Max(s_set, default=0)
 ```
-
-`Min({a, b})` / `Max({a, b})` over two values is just `Ite(a < b, a, b)` /
-`Ite(a > b, a, b)`.
 
 ## 5. Action translation rules
 
@@ -471,8 +481,8 @@ s.msgs = s.msgs | Set(mk_prepared(rm))
 
 Reserve `f.replace(k, v)` / `rec.replace(**fields)` / `.edit()` for building a
 **new value that is not bound to a state path** — a record to put in a message, a
-helper's return value, or a branch of an `Ite(...)`. When the target *is* a state
-path, write `s.f[k] = v`, not `s.f = s.f.replace(k, v)`.
+helper's return value, or a branch of a conditional value. When the target *is*
+a state path, write `s.f[k] = v`, not `s.f = s.f.replace(k, v)`.
 
 Direct assignment already covers multi-field updates (each step is atomic).
 Assignment is immediate, so to read the *unprimed* (pre-update) value of a field

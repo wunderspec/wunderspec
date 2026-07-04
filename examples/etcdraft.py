@@ -56,6 +56,7 @@ from wunderspec import (
     Ite,
     List,
     Map,
+    Max,
     Or,
     Set,
     SetIf,
@@ -460,7 +461,7 @@ def max_or_zero(s_expr: Expr) -> Expr:
 
     TLA+: MaxOrZero(s)  etcdraft.tla:203
     """
-    return s_expr.reduce(lambda acc, x: x.if_(x > acc).else_(acc), Val(0))
+    return Max(s_expr, default=0)
 
 
 def get_config(s: EtcdRaftState, i: Expr) -> Expr:
@@ -1436,6 +1437,21 @@ def committed_is_durable_inv(s: EtcdRaftState) -> Expr:
     )
 
 
+@invariant
+def all_inv(s: EtcdRaftState) -> Expr:
+    return And(
+        message_terms_le_current_term(s),
+        log_inv(s),
+        more_than_one_leader_inv(s),
+        election_safety_inv(s),
+        log_matching_inv(s),
+        quorum_log_inv(s),
+        more_up_to_date_correct_inv(s),
+        leader_completeness_inv(s),
+        committed_is_durable_inv(s),
+    )
+
+
 # =============================================================================
 # Instances and coverage
 # =============================================================================
@@ -1451,6 +1467,18 @@ def n3() -> EtcdRaftState:
         MaxTerm=2,
         MaxLogLen=3,
         MaxReconfig=1,
+    )
+
+
+@instance
+def n4() -> EtcdRaftState:
+    return EtcdRaftState(
+        Server=Set(1, ..., 4),
+        InitServer=Set(1, ..., 4),
+        Nil=0,
+        MaxTerm=5,
+        MaxLogLen=5,
+        MaxReconfig=3,
     )
 
 

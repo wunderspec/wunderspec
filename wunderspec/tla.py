@@ -122,10 +122,22 @@ class ExtractedExprDef:
     param_sorts: tuple["Sort", ...]
     result_sort: "Sort"
     body: Node
+    comment: str | None = None
 
 
 def _render_tla_doc(doc: AbstractDoc, *, text_width: int, text_indent: int) -> str:
     return render_doc(with_text_indent(doc, text_indent), text_width)
+
+
+def _operator_comment_lines(comment: str | None) -> list[str]:
+    """Render an attached Python docstring as TLA+ line comments."""
+    if comment is None or not comment.strip():
+        return []
+    return [r"\*" if line == "" else rf"\* {line}" for line in comment.splitlines()]
+
+
+def _extend_operator_comment(lines: list[str], comment: str | None) -> None:
+    lines.extend(_operator_comment_lines(comment))
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +361,7 @@ def _simplify_action_nonempty_guards(node: ActionNode) -> ActionNode:
                 node.args,
                 simplified_body,
                 placeholder_body=node.placeholder_body,
+                comment=node.comment,
             )
         case _:
             return node
@@ -356,12 +369,12 @@ def _simplify_action_nonempty_guards(node: ActionNode) -> ActionNode:
 
 def _needs_apalache_helpers(rendered_chunks: list[str]) -> bool:
     """Return whether rendered TLA uses Apalache helper operators."""
-    return any("ApaFold" in chunk for chunk in rendered_chunks)
+    return any("ApaFold" in chunk or "SetAsFun(" in chunk for chunk in rendered_chunks)
 
 
 def _needs_tlc(rendered_chunks: list[str]) -> bool:
-    """Return whether rendered TLA uses TLC operators (:>, @@, SetAsFun)."""
-    return any(" :> " in chunk or "SetAsFun(" in chunk for chunk in rendered_chunks)
+    """Return whether rendered TLA uses TLC operators (:>, @@)."""
+    return any(" :> " in chunk or " @@ " in chunk for chunk in rendered_chunks)
 
 
 def _typed_local_op_let(
@@ -386,6 +399,101 @@ def _typed_local_op_let(
         + HardLine()
         + TextDoc("IN")
         + NestDoc(ConcatDoc(HardLine(), in_doc), indent=4)
+    )
+
+
+def _same_bound_var(left: Node, right: VarNode) -> bool:
+    return (
+        isinstance(left, VarNode)
+        and left.name == right.name
+        and left.unique_name == right.unique_name
+        and left.sort == right.sort
+    )
+
+
+def _min_max_reduce_op(node: SetReduceNode | ListReduceNode) -> str | None:
+    """Return ``max``/``min`` for the exact reducer shape emitted by Max/Min."""
+    match node.fun:
+        case IteNode(
+            condition=AlgebraNode(op=AlgebraOp.GT, args=(new, acc)),
+            then_node=then_node,
+            else_node=else_node,
+        ):
+            if (
+                _same_bound_var(new, node.elem_var)
+                and _same_bound_var(acc, node.acc_var)
+                and _same_bound_var(then_node, node.elem_var)
+                and _same_bound_var(else_node, node.acc_var)
+            ):
+                return "max"
+        case IteNode(
+            condition=AlgebraNode(op=AlgebraOp.LT, args=(new, acc)),
+            then_node=then_node,
+            else_node=else_node,
+        ):
+            if (
+                _same_bound_var(new, node.elem_var)
+                and _same_bound_var(acc, node.acc_var)
+                and _same_bound_var(then_node, node.elem_var)
+                and _same_bound_var(else_node, node.acc_var)
+            ):
+                return "min"
+    return None
+
+
+def _list_values_set_doc(node: ListReduceNode) -> AbstractDoc:
+    idx_name = _tla_var_name(fresh_name("i"))
+    base_doc = _operand_doc(node.base_list)
+    idx_doc = TextDoc(idx_name)
+    values_doc = (
+        TextDoc("{")
+        + base_doc
+        + TextDoc("[(")
+        + idx_doc
+        + TextDoc(") + 1]: ")
+        + idx_doc
+        + TextDoc(" \\in ")
+        + _node_to_doc(ListKeysNode(node.base_list))
+        + TextDoc("}")
+    )
+    return values_doc
+
+
+def _try_min_max_reduce_doc(node: SetReduceNode | ListReduceNode) -> AbstractDoc | None:
+    op = _min_max_reduce_op(node)
+    if op is None or node.sort != IntSort() or node.initial.sort != IntSort():
+        return None
+
+    candidates_name = _tla_var_name(fresh_name(f"{op}_candidates_"))
+    chosen_name = _tla_var_name(fresh_name(f"{op}_"))
+    other_name = _tla_var_name(fresh_name(f"{op}_other_"))
+    cmp_text = " >= " if op == "max" else " <= "
+
+    base_candidates = (
+        _operand_doc(node.base_set)
+        if isinstance(node, SetReduceNode)
+        else _list_values_set_doc(node)
+    )
+    candidates_doc = (
+        TextDoc("(")
+        + base_candidates
+        + TextDoc(" \\union {")
+        + _operand_doc(node.initial)
+        + TextDoc("})")
+    )
+    candidates_ref = TextDoc(candidates_name)
+    choose_doc = (
+        TextDoc(f"CHOOSE {chosen_name} \\in ")
+        + candidates_ref
+        + TextDoc(f": \\A {other_name} \\in ")
+        + candidates_ref
+        + TextDoc(f": ({chosen_name}{cmp_text}{other_name})")
+    )
+    return _let_in_doc(
+        candidates_name,
+        candidates_doc,
+        choose_doc,
+        parenthesized=False,
     )
 
 
@@ -652,7 +760,7 @@ def _state_to_tla_header(
 def _tla_var_name(name_or_var: str | VarNode) -> str:
     """Convert a Python variable name to a valid TLA+ identifier."""
     if isinstance(name_or_var, VarNode):
-        name = name_or_var.unique_name or name_or_var.name
+        name = name_or_var.tla_name or name_or_var.unique_name or name_or_var.name
     else:
         name = name_or_var
     if name == "_":
@@ -830,6 +938,8 @@ def _needs_operand_parens(node: Node) -> bool:
             LetNode,
             ChooseNode,
             SetQuantNode,
+            SetReduceNode,
+            ListReduceNode,
             UnionMatchNode,
             ActionAndNode,
             ActionChoiceNode,
@@ -1328,6 +1438,10 @@ def _node_to_doc(
 
         # --- Set reduce ---
         case SetReduceNode():
+            min_max_doc = _try_min_max_reduce_doc(node)
+            if min_max_doc is not None:
+                return min_max_doc
+
             op_name = fresh_name("set_reduce_")
             return _typed_local_op_let(
                 op_name,
@@ -1570,6 +1684,10 @@ def _node_to_doc(
             )
 
         case ListReduceNode():
+            min_max_doc = _try_min_max_reduce_doc(node)
+            if min_max_doc is not None:
+                return min_max_doc
+
             op_name = fresh_name("list_reduce_")
             return _typed_local_op_let(
                 op_name,
@@ -1952,6 +2070,8 @@ def to_tla(
     init_ops: set[str] | None = None,
     text_width: int = 79,
     text_indent: int = 4,
+    operator_labels: Mapping[str, str] | None = None,
+    operator_comments: Mapping[str, str] | None = None,
     **nodes: Node,
 ) -> str:
     """Convert a wunderspec specification to TLA+ format.
@@ -1964,6 +2084,10 @@ def to_tla(
         extracted_actions: Dictionary of extracted action definitions.
         text_width: Preferred output width in columns.
         text_indent: Preferred block indentation in columns.
+        operator_labels: Mapping from TLA+ operator name to the TLA+ label that
+            should prefix the operator body.
+        operator_comments: Mapping from TLA+ operator name to a comment that
+            should appear before the operator definition.
         **nodes: Named operator definitions (e.g., Init=init_node, Next=next_node).
 
     Returns:
@@ -1986,6 +2110,10 @@ def to_tla(
         raise ValueError(f"text_width must be positive, got: {text_width}")
     if text_indent <= 0:
         raise ValueError(f"text_indent must be positive, got: {text_indent}")
+    if operator_labels is None:
+        operator_labels = {}
+    if operator_comments is None:
+        operator_comments = {}
 
     # Generate body lines first (to detect Variants usage)
     body_lines: list[str] = []
@@ -2052,6 +2180,8 @@ def to_tla(
         param_names_e = extracted_expr.param_names
         param_sorts_e = extracted_expr.param_sorts
         result_type_e = _sort_to_tla_type(extracted_expr.result_sort, nested=True)
+        comment_e = operator_comments.get(tla_name, extracted_expr.comment)
+        _extend_operator_comment(body_lines, comment_e)
         if param_names_e:
             params_types_e = ", ".join(
                 _sort_to_tla_type(s, nested=True) for s in param_sorts_e
@@ -2063,6 +2193,13 @@ def to_tla(
             body_lines.append(f"\\* @type: {result_type_standalone_e};")
             header_e = f"{tla_name} =="
         body_doc_e = _node_to_doc(extracted_expr.body, state_vars=state_vars)
+        label_e = operator_labels.get(tla_name)
+        if label_e is not None:
+            body_doc_e = ConcatDoc(
+                TextDoc(f"{label_e} ::"),
+                HardLine(),
+                body_doc_e,
+            )
         def_doc_e = ConcatDoc(
             TextDoc(header_e), NestDoc(ConcatDoc(HardLine(), body_doc_e), indent=4)
         )
@@ -2083,6 +2220,8 @@ def to_tla(
         # (e.g. both a standalone @action def and called inline from another action).
         if tla_name in nodes:
             continue
+        comment = operator_comments.get(tla_name, extracted.comment)
+        _extend_operator_comment(body_lines, comment)
         if param_names:
             params_types = ", ".join(
                 _sort_to_tla_type(sort, nested=True) for sort in param_sorts
@@ -2110,6 +2249,7 @@ def to_tla(
 
     # Pre-render every body once (used for both dependency scanning and output).
     rendered_ops: dict[str, str] = {}
+    rendered_op_comments: dict[str, str | None] = {}
     for op_name, node in nodes.items():
         # Skip operators already emitted early (top-level @expr(inline=False)
         # ops that had to precede extracted actions).
@@ -2117,6 +2257,7 @@ def to_tla(
             continue
 
         is_init_op = init_ops is not None and op_name in init_ops
+        comment = operator_comments.get(op_name)
 
         # If this is an @expr(inline=False) top-level operator, the AST node
         # is an ExprCallNode referencing itself (the call-site representation).
@@ -2124,6 +2265,8 @@ def to_tla(
         # call.  Any Expr params become formal parameters in the header.
         expr_param_names: tuple[str, ...] = ()
         if isinstance(node, ExprCallNode) and _to_camel_case(node.op_name) == op_name:
+            if comment is None:
+                comment = node.comment
             expr_param_names = node.param_names
             node = node.body
 
@@ -2137,6 +2280,13 @@ def to_tla(
                 clause = _unchanged_clause(missing, state_vars)
                 body_doc = _conjoin_action_doc_with_clause(body_doc, clause)
 
+        if op_name in operator_labels:
+            body_doc = ConcatDoc(
+                TextDoc(f"{operator_labels[op_name]} ::"),
+                HardLine(),
+                body_doc,
+            )
+
         if expr_param_names:
             header = f"{op_name}({', '.join(expr_param_names)}) =="
         else:
@@ -2148,9 +2298,11 @@ def to_tla(
         rendered_ops[op_name] = _render_tla_doc(
             def_doc, text_width=text_width, text_indent=text_indent
         )
+        rendered_op_comments[op_name] = comment
 
     deps = _build_op_dep_graph(rendered_ops)
     for op_name in _toposort_ops(op_names, deps):
+        _extend_operator_comment(body_lines, rendered_op_comments.get(op_name))
         body_lines.append(rendered_ops[op_name])
         body_lines.append("")
 
@@ -2299,6 +2451,7 @@ def _collect_extracted_actions(
                     param_names=param_names,
                     param_sorts=param_sorts,
                     body=node.body,
+                    comment=node.comment,
                 )
             _collect_extracted_actions(node.body, extracted)
 
@@ -2351,6 +2504,7 @@ def _collect_extracted_exprs(
                     param_sorts=param_sorts,
                     result_sort=node.sort,
                     body=node.body,
+                    comment=node.comment,
                 )
         case _:
             for child_val in vars(node).values():

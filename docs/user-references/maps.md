@@ -180,6 +180,15 @@ assert repr(value(doubled)) == "Map(1 -> 2, 2 -> 4, 3 -> 6)"
 
 The generator form of `Map` requires exactly one `for` clause.
 
+Pass `name=` to choose the binder name used when this expression is rendered to
+TLA<sup>+</sup>:
+
+<!-- name: test_maps -->
+```python
+named_doubled = Map((x * Val(2) for x in domain), name="p")
+assert repr(value(named_doubled[Val(3)])) == "6"
+```
+
 ## Functional updates — `.edit()`
 
 `.edit()` returns an `UpdatesBuilder` for making multiple targeted changes to

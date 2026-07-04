@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.136.1] -- 2026-07-04
+
+Changes since public release v0.134.1.
+
+- Add `--coverage NAME` to `wunderspec with-apalache`, passing the generated
+  TLA+ operator for the selected `@coverage` function as `--view=<Oper>` for
+  `check` and `simulate`.
+- Allow `wunderspec with-apalache --max-steps 0` to check initial states.
+- Write Apalache output to an `apalache.log` file while it runs, report the log
+  path, and add `--verbose` to stream the log to the terminal immediately.
+- Require `default=...` for collection-form `Max` and `Min`, e.g.
+  `Max(s, default=0)`. The default is the reduce seed, so empty collections no
+  longer need a separate size guard or `CHOOSE`-based seed.
+- Render collection-form `Max` and `Min` reducers as TLAPS-friendly `CHOOSE`
+  expressions in generated TLA+ while keeping reducer-based interpreter
+  evaluation.
+- Add TLA+ labels to `wunderspec convert` output for `@invariant` and
+  `@example` operators, including nested predicate calls by default. Use
+  `@invariant(inline=True)` or `@example(inline=True)` to inline nested
+  predicate calls instead.
+- Preserve definition docstrings when converting Wunderspec to TLA+ by emitting
+  them as `\*` comments immediately before the generated operator definitions.
+- Allow generator-form `Forall`, `Exists`, `SetIf`, `Set`, and `Map` calls to
+  pass `name=` for readable TLA+ binder names while preserving internal unique
+  binder identities.
+- Short-circuit interpreter evaluation of `Implies(False, rhs)`, so the right
+  side is not evaluated when the antecedent is false.
+- Add `Max` and `Min` builtins. They take either several integers
+  (`Max(a, b, c)`) or a single set or list of integers (`Max(s)`). Both are
+  syntactic sugar — the multi-argument form expands to nested `Ite` and the
+  collection form folds with `reduce` — so they work in the interpreter, TLC,
+  and Apalache. `Max(s)`/`Min(s)` over an empty collection are undefined and
+  raise, mirroring `CHOOSE` over an empty set; guard with
+  `Ite(s.size == 0, default, Max(s))` when you need a fallback.
+
 ## [0.134.1] -- 2026-06-26
 
 Changes since public release v0.132.2.

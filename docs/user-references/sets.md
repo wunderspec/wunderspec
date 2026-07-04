@@ -293,6 +293,17 @@ The initial value is auto-coerced, so a raw `0` works just like `Val(0)`.
 Note that sets are unordered, so `reduce` is only predictable when the
 operation is commutative and associative (e.g., addition or multiplication).
 
+For the common case of the smallest or largest element of a set of integers,
+use `Max(s, default=...)` and `Min(s, default=...)` (see
+[Integer expressions](integers.md)):
+
+<!-- name: test_sets -->
+```python
+s = Set(3, 7, 2)
+assert repr(value(Max(s, default=0))) == "7"
+assert repr(value(Min(s, default=10))) == "2"
+```
+
 ## Choosing an element
 
 `choose` selects an element satisfying a predicate — corresponding to
