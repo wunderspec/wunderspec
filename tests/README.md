@@ -2,13 +2,13 @@
 
 The unit tests from the Wunderspec development repository are omitted from this
 public distribution to keep the package focused. The full development
-`make test` suite currently collects 2458 tests.
+`make test` suite currently collects 2459 tests.
 
 ## Release Provenance
 
-- Release tag: `v0.136.1`
-- Source commit: `6ef37ade3f08676708e0127d20ba14e313abbbb2`
-- Test log captured at: `2026-07-04T08:24:58Z`
+- Release tag: `v0.136.4`
+- Source commit: `7beedd2736b068f1c371f59fd8ed619a1d9e75a5`
+- Test log captured at: `2026-07-06T11:25:51Z`
 - `make test` exit code: `0`
 
 ## Full Test Log From the Development Repository
@@ -20,7 +20,7 @@ platform linux -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0
 rootdir: /home/runner/work/wunderspec-dev/wunderspec-dev/release-source
 configfile: pyproject.toml
 plugins: pytest_codeblocks-0.17.0, subtests-0.15.0, hypothesis-6.155.2, cov-6.3.0, markdown-pytest-0.3.2
-collected 2458 items
+collected 2459 items
 
 docs/user-references/booleans.md .                                       [  0%]
 docs/user-references/comprehensions.md .                                 [  0%]
@@ -50,7 +50,7 @@ tests/test_ast_terms.py ................................................ [  9%]
 tests/test_ast_tuple.py .................................                [ 12%]
 tests/test_cache.py .............................                        [ 13%]
 tests/test_cli.py ...................................................... [ 15%]
-........ssssss........................................................   [ 18%]
+........ssssss.........................................................  [ 18%]
 tests/test_conditional.py ..............                                 [ 19%]
 tests/test_direct_pc_examples.py .                                       [ 19%]
 tests/test_enabled_eval.py ............                                  [ 19%]
@@ -69,7 +69,7 @@ tests/test_interpreter_integers.py ..................................... [ 31%]
 .................                                                        [ 32%]
 tests/test_interpreter_let.py ..............                             [ 32%]
 tests/test_interpreter_lists.py ........................................ [ 34%]
-...................................................................      [ 36%]
+...................................................................      [ 37%]
 tests/test_interpreter_map.py .......................................... [ 38%]
                                                                          [ 38%]
 tests/test_interpreter_quantifiers.py .............................      [ 39%]
@@ -126,5 +126,5 @@ tests/test_tla.py ...................................................... [ 94%]
 tests/test_tlc_trace.py ....                                             [ 98%]
 tests/test_trace_output.py .........................                     [100%]
 
-====================== 2447 passed, 11 skipped in 32.60s =======================
+====================== 2448 passed, 11 skipped in 29.98s =======================
 ```

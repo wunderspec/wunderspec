@@ -10,6 +10,7 @@ import hashlib
 import importlib.util
 import inspect
 import json
+import linecache
 import os
 import random
 import re
@@ -17,6 +18,7 @@ import shlex
 import sys
 import tempfile
 import time
+import traceback
 from collections import OrderedDict
 from copy import copy
 from dataclasses import dataclass, field, replace
@@ -91,6 +93,8 @@ from wunderspec.trace_output import (
     print_state,
     print_trace,
 )
+
+_WUNDERSPEC_DIR = Path(__file__).resolve().parent
 
 
 class ApiError(Exception):
@@ -1790,7 +1794,7 @@ def convert(request: ConvertRequest, reporter: Reporter | None = None) -> Conver
                 node, extracted = build_action_ast(state_cls, func)
                 all_extracted_actions.update(extracted)
             except Exception as e:
-                _fatal(f"Error building AST for action '{def_name}': {e}")
+                _fatal(_format_ast_build_error("action", def_name, e))
         else:
             rpt.info(f"Building AST for expression: {def_name}")
             try:
@@ -1806,7 +1810,7 @@ def convert(request: ConvertRequest, reporter: Reporter | None = None) -> Conver
                     suppress_predicate=func,
                 )
             except Exception as e:
-                _fatal(f"Error building AST for expression '{def_name}': {e}")
+                _fatal(_format_ast_build_error("expression", def_name, e))
 
         tla_name = to_camel_case(def_name)
         nodes[tla_name] = node
@@ -1923,6 +1927,72 @@ def _format_source_span(span: Any, *, include_col: bool = True) -> str | None:
     if include_col:
         return f"{filename}:{span.lineno}:{span.col_offset}"
     return f"{filename}:{span.lineno}"
+
+
+def _is_wunderspec_source(filename: str) -> bool:
+    try:
+        Path(filename).resolve().relative_to(_WUNDERSPEC_DIR)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def _innermost_user_frame(exc: BaseException) -> traceback.FrameSummary | None:
+    frames = traceback.extract_tb(exc.__traceback__)
+    for frame in reversed(frames):
+        if frame.filename.startswith("<"):
+            continue
+        if frame.lineno is None:
+            continue
+        if _is_wunderspec_source(frame.filename):
+            continue
+        if _display_source_path(frame.filename) is None:
+            continue
+        return frame
+    return None
+
+
+def _source_line_for_frame(frame: traceback.FrameSummary) -> str | None:
+    if frame.lineno is None:
+        return None
+    source = linecache.getline(frame.filename, frame.lineno)
+    if source:
+        return source.rstrip("\n")
+    return frame.line
+
+
+def _format_caret_line(frame: traceback.FrameSummary) -> str | None:
+    if _source_line_for_frame(frame) is None:
+        return None
+    colno = frame.colno
+    if colno is None:
+        return None
+    end_colno = frame.end_colno if frame.end_colno is not None else colno + 1
+    width = max(1, end_colno - colno)
+    return f"    {' ' * colno}{'^' * width}"
+
+
+def _format_ast_build_error(kind: str, def_name: str, exc: BaseException) -> str:
+    header = f"Error building AST for {kind} '{def_name}'"
+    frame = _innermost_user_frame(exc)
+    if frame is None:
+        return f"{header}: {exc}"
+
+    location = _display_source_path(frame.filename)
+    if location is None:
+        return f"{header}: {exc}"
+
+    col = f":{frame.colno}" if frame.colno is not None else ""
+    lines = [f"{header}:"]
+    lines.append(f"  {location}:{frame.lineno}{col} in {frame.name}")
+    source_line = _source_line_for_frame(frame)
+    if source_line is not None:
+        lines.append(f"    {source_line}")
+        caret = _format_caret_line(frame)
+        if caret is not None:
+            lines.append(caret)
+    lines.append(f"  {type(exc).__name__}: {exc}")
+    return "\n".join(lines)
 
 
 def _format_action_node(node: ActionNode) -> str:

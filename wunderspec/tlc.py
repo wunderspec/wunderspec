@@ -22,6 +22,7 @@ from wunderspec.api import (
     TlcRequest,
     TlcResult,
     _fatal,
+    _format_ast_build_error,
     _indexed_path,
     _ItfNdjsonSink,
     _print_trace,
@@ -262,7 +263,7 @@ def run_tlc(request: TlcRequest, reporter: Reporter) -> TlcResult:
         try:
             node, extracted = build_action_ast(state_cls, func)
         except Exception as e:
-            _fatal(f"Error building AST for action '{def_name}': {e}")
+            _fatal(_format_ast_build_error("action", def_name, e))
         all_extracted_actions.update(extracted)
         nodes[to_camel_case(def_name)] = node
         if is_init:
@@ -280,7 +281,7 @@ def run_tlc(request: TlcRequest, reporter: Reporter) -> TlcResult:
     try:
         property_node = build_expr_ast(state_cls, expr_func)
     except Exception as e:
-        _fatal(f"Error building AST for expression '{property_func_name}': {e}")
+        _fatal(_format_ast_build_error("expression", property_func_name, e))
 
     if property_kind in ("invariant", "example") and not isinstance(
         property_node.sort, BoolSort

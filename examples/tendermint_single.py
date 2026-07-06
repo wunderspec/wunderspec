@@ -1,7 +1,10 @@
 """
 Single-height Tendermint consensus protocol in Wunderspec.
 
+The original Tendermint consensus appears in: https://arxiv.org/abs/1807.04938.
+
 The first version was translated by Codex GPT 5.5 from TLA+ specification:
+
 https://github.com/cometbft/cometbft/blob/main/spec/light-client/accountability/TendermintAcc_004_draft.tla
 
 We made additional specification extensions:
@@ -10,6 +13,9 @@ We made additional specification extensions:
  - Add `init_with_faults` to initialize the state with messages from the faulty replicas
  - Add `faulty_step` to model the messages by the faulty replicas
  - Add `correct_step` to model the behavior by the correct replicas only
+
+As in the original specification, timeouts are in general omitted, except when
+they might affect safety.
 
 Igor Konnov, 2026
 """
@@ -29,7 +35,6 @@ from wunderspec import (
     Implies,
     Interval,
     Map,
-    Or,
     Param,
     Set,
     SetIf,
@@ -153,9 +158,6 @@ class TendermintAccState(MachineStateBase):
     msgs_propose: StateVar[dict[Round, set[ProposalMsg]]]
     msgs_prevote: StateVar[dict[Round, set[VoteMsg]]]
     msgs_precommit: StateVar[dict[Round, set[VoteMsg]]]
-    evidence_propose: StateVar[set[ProposalMsg]]
-    evidence_prevote: StateVar[set[VoteMsg]]
-    evidence_precommit: StateVar[set[VoteMsg]]
     last_action: StateVar[str]
 
 
@@ -251,7 +253,10 @@ def all_faulty_precommits(s: TendermintAccState) -> Expr:
 
 @action(init=True)
 def init(c: Context[TendermintAccState]):
-    """Initial state with no messages from faulty processes."""
+    """
+    Algorithm 1, lines 1-9, adapted to one height.
+    This initializer starts with empty message logs for faulty processes.
+    """
     s = c.state
     s.round = Map(Val(0) for _ in s.Corr)
     s.step = Map(Val(Step.PROPOSE) for _ in s.Corr)
@@ -260,18 +265,18 @@ def init(c: Context[TendermintAccState]):
     s.locked_round = Map(Val(NIL_ROUND) for _ in s.Corr)
     s.valid_value = Map(Val(NIL_VALUE) for _ in s.Corr)
     s.valid_round = Map(Val(NIL_ROUND) for _ in s.Corr)
-    s.msgs_propose = Map(Set(ProposalMsg) for rnd in rounds(s))
-    s.msgs_prevote = Map(Set(VoteMsg) for rnd in rounds(s))
-    s.msgs_precommit = Map(Set(VoteMsg) for rnd in rounds(s))
-    s.evidence_propose = Set(ProposalMsg)
-    s.evidence_prevote = Set(VoteMsg)
-    s.evidence_precommit = Set(VoteMsg)
+    s.msgs_propose = Map(Set(ProposalMsg) for _ in rounds(s))
+    s.msgs_prevote = Map(Set(VoteMsg) for _ in rounds(s))
+    s.msgs_precommit = Map(Set(VoteMsg) for _ in rounds(s))
     s.last_action = Val(ACTION_INIT)
 
 
 @action(init=True)
 def init_with_faults(c: Context[TendermintAccState]):
-    """Initial state that may already contain messages from faulty processes."""
+    """
+    Algorithm 1, lines 1-9, adapted to one height.
+    Extension: the initial message logs may contain arbitrary faulty messages.
+    """
     s = c.state
     with (
         c.one_of(AllSubsets(all_faulty_proposals(s)), "faulty_proposals") as fprop,
@@ -294,9 +299,6 @@ def init_with_faults(c: Context[TendermintAccState]):
         s.msgs_precommit = Map(
             fcommit.filter(lambda m: m.round == rnd) for rnd in rounds(s)
         )
-        s.evidence_propose = Set(ProposalMsg)
-        s.evidence_prevote = Set(VoteMsg)
-        s.evidence_precommit = Set(VoteMsg)
         s.last_action = Val(ACTION_INIT)
 
 
@@ -333,7 +335,12 @@ def broadcast_precommit(
 
 @action(inline=True)
 def start_round(c: Context[TendermintAccState], p: Expr, rnd: Expr):
-    """Move a non-decided process to the propose step of a new round."""
+    """
+    10: upon start, enter StartRound(0)
+    11: StartRound(round)
+    12: round_p <- round
+    13: step_p <- propose
+    """
     s = c.state
     c.assume(s.step[p] != Step.DECIDED)
     s.round[p] = rnd
@@ -342,7 +349,16 @@ def start_round(c: Context[TendermintAccState], p: Expr, rnd: Expr):
 
 @action(inline=False)
 def insert_proposal(c: Context[TendermintAccState], p: Expr):
-    """Proposer broadcasts a valid proposal for its current round."""
+    """
+    14: if proposer(h_p, round_p) = p then
+    15:   if validValue_p != nil then
+    16:     proposal <- validValue_p
+    17:   else:
+    18:     proposal <- getValue()
+    19:   broadcast <PROPOSAL, h_p, round_p, proposal, validRound_p>
+    20: else:
+    21:   schedule OnTimeoutPropose(h_p, round_p) ...
+    """
     s = c.state
     rnd = c.cache(s.round[p])
     c.assume(p == s.Proposer[rnd])
@@ -356,14 +372,20 @@ def insert_proposal(c: Context[TendermintAccState], p: Expr):
 
 @action(inline=False)
 def upon_proposal_in_propose(c: Context[TendermintAccState], p: Expr):
-    """Handle a proposal with nil valid round while in the propose step."""
+    """
+    22: upon proposal (v, -1) from proposer while step_p = propose
+    23:   if valid(v) and (lockedRound_p = -1 or lockedValue_p = v) then
+    24:     broadcast PREVOTE for v
+    25:   else
+    26:     broadcast PREVOTE for nil
+    27:   step_p <- prevote
+    """
     s = c.state
     rnd = c.cache(s.round[p])
     c.assume(s.step[p] == Step.PROPOSE)
     with c.one_of(values(s), "v") as v:
         msg = mk_proposal(s.Proposer[rnd], rnd, v, Val(NIL_ROUND))
         c.assume(s.msgs_propose[rnd].contains(msg))
-        s.evidence_propose |= Set(msg)
         vote_id = v.if_(
             is_valid(s, v)
             & ((s.locked_round[p] == NIL_ROUND) | (s.locked_value[p] == v))
@@ -375,7 +397,15 @@ def upon_proposal_in_propose(c: Context[TendermintAccState], p: Expr):
 
 @action(inline=False)
 def upon_proposal_in_propose_and_prevote(c: Context[TendermintAccState], p: Expr):
-    """Handle a proposal justified by a previous-round prevote quorum."""
+    """
+    28: upon proposal (v, vr) from proposer and 2f+1 prevotes for v in vr
+        while step_p = propose and 0 <= vr < round_p
+    29:   if valid(v) and (lockedRound_p <= vr or lockedValue_p = v) then
+    30:     broadcast PREVOTE for v
+    31:   else
+    32:     broadcast PREVOTE for nil
+    33:   step_p <- prevote
+    """
     s = c.state
     rnd = c.cache(s.round[p])
     c.assume(s.step[p] == Step.PROPOSE)
@@ -386,8 +416,6 @@ def upon_proposal_in_propose_and_prevote(c: Context[TendermintAccState], p: Expr
         prevotes = c.cache(s.msgs_prevote[vr].filter(lambda m: m.id == v))
         c.assume(s.msgs_propose[rnd].contains(msg))
         c.assume(prevotes.size >= threshold2(s))
-        s.evidence_propose |= Set(msg)
-        s.evidence_prevote |= prevotes
         vote_id = v.if_(
             is_valid(s, v) & ((s.locked_round[p] <= vr) | (s.locked_value[p] == v))
         ).else_(NIL_VALUE)
@@ -398,13 +426,18 @@ def upon_proposal_in_propose_and_prevote(c: Context[TendermintAccState], p: Expr
 
 @action(inline=False)
 def upon_quorum_of_prevotes_any(c: Context[TendermintAccState], p: Expr):
-    """Precommit nil after observing a current-round prevote quorum."""
+    """
+    34: upon 2f+1 current-round prevotes while step_p = prevote
+    35:   schedule OnTimeoutPrevote(h_p, round_p)
+
+    This safety model does not store timers. The transition represents the
+    timeout firing and immediately takes the nil-precommit path.
+    """
     s = c.state
     rnd = c.cache(s.round[p])
     c.assume(s.step[p] == Step.PREVOTE)
     with c.one_of(AllSubsets(s.msgs_prevote[rnd]), "my_evidence") as ev:
         c.assume(senders(s, ev).size >= threshold2(s))
-        s.evidence_prevote |= ev
         broadcast_precommit(c, p, rnd, Val(NIL_VALUE))
         s.step[p] = Val(Step.PRECOMMIT)
         s.last_action = Val(ACTION_UPON_QUORUM_OF_PREVOTES_ANY)
@@ -414,7 +447,17 @@ def upon_quorum_of_prevotes_any(c: Context[TendermintAccState], p: Expr):
 def upon_proposal_in_prevote_or_commit_and_prevote(
     c: Context[TendermintAccState], p: Expr
 ):
-    """Lock and precommit a valid proposal supported by a prevote quorum."""
+    """
+    36: upon proposal (v, *) and 2f+1 current-round prevotes for v
+        while valid(v) and step_p >= prevote
+    37:   if step_p = prevote then
+    38:     lockedValue_p <- v
+    39:     lockedRound_p <- round_p
+    40:     broadcast PRECOMMIT for v
+    41:     step_p <- precommit
+    42:   validValue_p <- v
+    43:   validRound_p <- round_p
+    """
     s = c.state
     rnd = c.cache(s.round[p])
     c.assume((s.step[p] == Step.PREVOTE) | (s.step[p] == Step.PRECOMMIT))
@@ -423,8 +466,6 @@ def upon_proposal_in_prevote_or_commit_and_prevote(
         prevotes = c.cache(s.msgs_prevote[rnd].filter(lambda m: m.id == v))
         c.assume(s.msgs_propose[rnd].contains(msg))
         c.assume(prevotes.size >= threshold2(s))
-        s.evidence_propose |= Set(msg)
-        s.evidence_prevote |= prevotes
         prevote_step, precommit_step = c.split(s.step[p] == Step.PREVOTE)
         with prevote_step:
             s.locked_value[p] = v
@@ -440,20 +481,34 @@ def upon_proposal_in_prevote_or_commit_and_prevote(
 
 @action(inline=False)
 def upon_quorum_of_precommits_any(c: Context[TendermintAccState], p: Expr):
-    """Advance to the next round after observing a precommit quorum."""
+    """
+    47: upon 2f+1 current-round precommits
+    48:   schedule OnTimeoutPrecommit(h_p, round_p)
+
+    This safety model does not store timers. The transition represents the
+    timeout firing and immediately advances to the next modeled round.
+    """
     s = c.state
     rnd = c.cache(s.round[p])
     with c.one_of(AllSubsets(s.msgs_precommit[rnd]), "my_evidence") as ev:
         c.assume(senders(s, ev).size >= threshold2(s))
         c.assume(rounds(s).contains(rnd + 1))
-        s.evidence_precommit |= ev
         start_round(c, p, rnd + 1)
         s.last_action = Val(ACTION_UPON_QUORUM_OF_PRECOMMITS_ANY)
 
 
 @action(inline=False)
 def upon_proposal_in_precommit_no_decision(c: Context[TendermintAccState], p: Expr):
-    """Decide a value after observing a valid proposal and precommit quorum."""
+    """
+    49: upon proposal (v, *) and 2f+1 precommits for v while undecided
+    50:   if valid(v) then
+    51:     decision_p[h_p] <- v
+    52:     h_p <- h_p + 1
+    53:     reset locks, valid value, valid round, and message log
+    54:     StartRound(0)
+
+    This one-height model records the decision and moves the process to DECIDED.
+    """
     s = c.state
     c.assume(s.decision[p] == NIL_VALUE)
     with (
@@ -465,8 +520,6 @@ def upon_proposal_in_precommit_no_decision(c: Context[TendermintAccState], p: Ex
         precommits = c.cache(s.msgs_precommit[rnd].filter(lambda m: m.id == v))
         c.assume(s.msgs_propose[rnd].contains(msg))
         c.assume(precommits.size >= threshold2(s))
-        s.evidence_precommit |= precommits
-        s.evidence_propose |= Set(msg)
         s.decision[p] = v
         s.step[p] = Val(Step.DECIDED)
         s.last_action = Val(ACTION_UPON_PROPOSAL_IN_PRECOMMIT_NO_DECISION)
@@ -474,7 +527,12 @@ def upon_proposal_in_precommit_no_decision(c: Context[TendermintAccState], p: Ex
 
 @action(inline=False)
 def on_timeout_propose(c: Context[TendermintAccState], p: Expr):
-    """Model a propose timeout by prevoting nil for a non-proposer."""
+    """
+    57: OnTimeoutPropose(height, round)
+    58:   if height = h_p and round = round_p and step_p = propose then
+    59:     broadcast PREVOTE for nil
+    60:     step_p <- prevote
+    """
     s = c.state
     rnd = c.cache(s.round[p])
     c.assume(s.step[p] == Step.PROPOSE)
@@ -486,13 +544,16 @@ def on_timeout_propose(c: Context[TendermintAccState], p: Expr):
 
 @action(inline=False)
 def on_quorum_of_nil_prevotes(c: Context[TendermintAccState], p: Expr):
-    """Precommit nil after observing a quorum of nil prevotes."""
+    """
+    44: upon 2f+1 current-round PREVOTE nil messages while step_p = prevote
+    45:   broadcast PRECOMMIT for nil
+    46:   step_p <- precommit
+    """
     s = c.state
     rnd = c.cache(s.round[p])
     c.assume(s.step[p] == Step.PREVOTE)
     prevotes = c.cache(s.msgs_prevote[rnd].filter(lambda m: m.id == NIL_VALUE))
     c.assume(prevotes.size >= threshold2(s))
-    s.evidence_prevote |= prevotes
     broadcast_precommit(c, p, rnd, Val(NIL_VALUE))
     s.step[p] = Val(Step.PRECOMMIT)
     s.last_action = Val(ACTION_ON_QUORUM_OF_NIL_PREVOTES)
@@ -500,7 +561,10 @@ def on_quorum_of_nil_prevotes(c: Context[TendermintAccState], p: Expr):
 
 @action(inline=False)
 def on_round_catchup(c: Context[TendermintAccState], p: Expr):
-    """Catch up to a higher round after seeing enough faster-process evidence."""
+    """
+    55: upon f+1 messages from a higher round
+    56:   StartRound(round)
+    """
     s = c.state
     with (
         c.one_of(rounds(s), "rnd") as rnd,
@@ -513,9 +577,6 @@ def on_round_catchup(c: Context[TendermintAccState], p: Expr):
             senders(s, ev_propose) | senders(s, ev_prevote) | senders(s, ev_precommit)
         )
         c.assume(faster.size >= threshold1(s))
-        s.evidence_propose |= ev_propose
-        s.evidence_prevote |= ev_prevote
-        s.evidence_precommit |= ev_precommit
         start_round(c, p, rnd)
         s.last_action = Val(ACTION_ON_ROUND_CATCHUP)
 
@@ -642,38 +703,6 @@ def equivocation_in(msgs: Expr, p: Expr) -> Expr:
     )
 
 
-def equivocation_by(s: TendermintAccState, p: Expr) -> Expr:
-    """Whether process p equivocates in any collected evidence set."""
-    return Or(
-        equivocation_in(s.evidence_propose, p),
-        equivocation_in(s.evidence_prevote, p),
-        equivocation_in(s.evidence_precommit, p),
-    )
-
-
-def amnesia_by(s: TendermintAccState, p: Expr) -> Expr:
-    """Whether process p shows amnesia across conflicting locks and votes."""
-    return Exists(
-        And(
-            r1 < r2,
-            v1 != v2,
-            s.evidence_precommit.contains(mk_precommit(p, r1, v1)),
-            s.evidence_prevote.contains(mk_prevote(p, r2, v2)),
-            Forall(
-                s.evidence_prevote.filter(
-                    lambda m: (m.round == rnd) & (m.id == v2)
-                ).size
-                < threshold2(s)
-                for rnd in rounds(s).filter(lambda r: (r1 <= r) & (r < r2))
-            ),
-        )
-        for r1 in rounds(s)
-        for r2 in rounds(s)
-        for v1 in s.ValidValues
-        for v2 in s.ValidValues
-    )
-
-
 @invariant
 def assumptions_hold(s: TendermintAccState) -> BoolExpr:
     """Model assumptions needed for the bounded accountability instance."""
@@ -714,18 +743,6 @@ def type_ok(s: TendermintAccState) -> BoolExpr:
             )
             for rnd in rounds(s)
         ),
-        Forall(
-            proposal_ok(s, m, m.round) & rounds(s).contains(m.round)
-            for m in s.evidence_propose
-        ),
-        Forall(
-            vote_ok(s, m, m.round, VoteKind.PREVOTE) & rounds(s).contains(m.round)
-            for m in s.evidence_prevote
-        ),
-        Forall(
-            vote_ok(s, m, m.round, VoteKind.PRECOMMIT) & rounds(s).contains(m.round)
-            for m in s.evidence_precommit
-        ),
         action_names().contains(s.last_action),
     )
 
@@ -745,30 +762,6 @@ def validity(s: TendermintAccState) -> BoolExpr:
     )
 
 
-@invariant
-def accountability(s: TendermintAccState) -> BoolExpr:
-    """Either agreement holds or enough faulty processes expose evidence."""
-    return agreement_expr(s) | Exists(
-        And(
-            detectable.size >= threshold1(s),
-            Forall(equivocation_by(s, p) | amnesia_by(s, p) for p in detectable),
-        )
-        for detectable in AllSubsets(s.Faulty)
-    )  # type: ignore
-
-
-@invariant
-def no_amnesia(s: TendermintAccState) -> BoolExpr:
-    """False invariant used to produce traces with amnesic faulty behavior."""
-    return Forall(~amnesia_by(s, p) for p in s.Faulty)
-
-
-@invariant
-def no_equivocation(s: TendermintAccState) -> BoolExpr:
-    """False invariant used to produce traces with equivocation evidence."""
-    return Forall(~equivocation_by(s, p) for p in s.Faulty)
-
-
 @example
 def no_agreement(s: TendermintAccState) -> BoolExpr:
     """Example of violating agreement, e.g. for N=4,T=1,F=2."""
@@ -779,30 +772,6 @@ def no_agreement(s: TendermintAccState) -> BoolExpr:
         )
         for p in s.Corr
         for q in s.Corr
-    )
-
-
-@example
-def agreement_or_amnesia(s: TendermintAccState) -> BoolExpr:
-    """Counterexample should show disagreement not explained by amnesia alone."""
-    return agreement_expr(s) | Forall(amnesia_by(s, p) for p in s.Faulty)  # type: ignore
-
-
-@example
-def show_me_amnesia_without_equivocation(s: TendermintAccState) -> BoolExpr:
-    """Example search for amnesia by a faulty process without equivocation."""
-    return Implies(
-        ~agreement_expr(s) & Exists(~equivocation_by(s, p) for p in s.Faulty),
-        Forall(~amnesia_by(s, p) for p in s.Faulty),
-    )
-
-
-@invariant
-def amnesia_implies_equivocation(s: TendermintAccState) -> BoolExpr:
-    """False invariant: amnesia need not imply equivocation."""
-    return Implies(
-        Exists(amnesia_by(s, p) for p in s.Faulty),
-        Exists(equivocation_by(s, q) for q in s.Faulty),
     )
 
 
@@ -841,9 +810,6 @@ def state_cov(s: TendermintAccState) -> Expr:
         s.msgs_propose,
         s.msgs_prevote,
         s.msgs_precommit,
-        s.evidence_propose,
-        s.evidence_prevote,
-        s.evidence_precommit,
     )
 
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.136.4] -- 2026-07-06
+
+Changes since public release v0.136.1.
+
+- Add an inductive invariant in `examples/tendermint_single_indinv.py`.
+
 ## [0.136.1] -- 2026-07-04
 
 Changes since public release v0.134.1.
