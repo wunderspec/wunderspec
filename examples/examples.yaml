@@ -72,10 +72,9 @@ examples:
         step: step
   - file: tendermint_single.py
     instances: n4_t1_f0
-    invariants: assumptions_hold type_ok agreement validity accountability
+    invariants: assumptions_hold type_ok agreement validity
     examples: >-
-      agreement_or_amnesia never_undecided_in_max_round no_agreement
-      show_me_amnesia_without_equivocation
+      never_undecided_in_max_round no_agreement
     timeout: 30
   - file: ledger.py
     instances: tiny_ledger

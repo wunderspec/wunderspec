@@ -146,7 +146,7 @@ from .random_walk import state_view
 from .source_tracking import enable_source_tracking
 from .submachine import SubMachine
 
-__version__ = "0.136.4"
+__version__ = "0.136.6"
 
 __all__ = [
     # Constructor functions

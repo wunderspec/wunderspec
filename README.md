@@ -87,16 +87,16 @@ commands are not included in this package.
 
 ## 4. Release Provenance
 
-- Release tag: `v0.136.4`
-- Source commit: `7beedd2736b068f1c371f59fd8ed619a1d9e75a5`
+- Release tag: `v0.136.6`
+- Source commit: `220f8984c8ea99a7debba9a0866743ede63bd482`
 
 See [tests/README.md][] for the development test log captured at release time.
 
 ## 5. Latest Release Notes
 
-Changes since public release v0.136.1.
+Changes since public release v0.136.4.
 
-- Add an inductive invariant in `examples/tendermint_single_indinv.py`.
+Fix examples in the CI
 
 ## 6. License
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.136.6] -- 2026-07-10
+
+Changes since public release v0.136.4.
+
+Fix examples in the CI
+
 ## [0.136.4] -- 2026-07-06
 
 Changes since public release v0.136.1.
