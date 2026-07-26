@@ -833,7 +833,7 @@
       </section>
 
       <!-- Maps -->
-      <section class="card" data-title="maps map_to keys get replace insert size is_empty edit mapto explicit pairs constructor">
+      <section class="card" data-title="maps map_to keys values items get replace insert size is_empty edit mapto explicit pairs constructor">
         <header>
           <h2>Maps (dictionaries)</h2>
           <span class="hint">Immutable key/value bindings</span>
@@ -848,8 +848,8 @@
             <div class="desc">Explicit finite map; literals are auto-coerced and sorts are inferred from the first pair</div>
           </div>
           <div class="item">
-            <div class="sig">MapTo(f(x) for x in domain)</div>
-            <div class="desc">Map binding each element of <span class="sig">domain</span> to <span class="sig">f(x)</span></div>
+            <div class="sig">Map(f(x) for x in keys)</div>
+            <div class="desc">Map binding each element of <span class="sig">keys</span> to <span class="sig">f(x)</span></div>
           </div>
           <div class="item">
             <div class="sig">M[key]</div>
@@ -866,6 +866,14 @@
           <div class="item">
             <div class="sig">M.keys</div>
             <div class="desc">Set of all keys (domain)</div>
+          </div>
+          <div class="item">
+            <div class="sig">M.values</div>
+            <div class="desc">Set of all values (duplicates collapse since the result is a set)</div>
+          </div>
+          <div class="item">
+            <div class="sig">M.items</div>
+            <div class="desc">Set of <span class="sig">(key, value)</span> tuples</div>
           </div>
           <div class="item">
             <div class="sig">M.size</div>

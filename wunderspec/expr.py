@@ -70,7 +70,7 @@ from wunderspec.ast.sorts import (
     UnionSort,
 )
 from wunderspec.ast.temporal_ast import AlwaysNode, EventuallyNode, ToTemporalNode
-from wunderspec.ast.tuple_ast import TupleGetNode, TupleUpdateNode
+from wunderspec.ast.tuple_ast import TupleCtorNode, TupleGetNode, TupleUpdateNode
 from wunderspec.ast.union_ast import UnionGetTagNode, UnionMatchNode
 from wunderspec.uniq_names import fresh_name
 
@@ -875,6 +875,18 @@ class Expr:
             return MapExpr(self._node).values
         else:
             raise TypeError(f"m.values requires m to be a Map, got {self.sort}")
+
+    @property
+    def items(self) -> "SetExpr":
+        """Return the set of key-value pairs in this map, as 2-element tuples.
+
+        Example:
+            balances_items = balances.items
+        """
+        if isinstance(self.sort, MapSort):
+            return MapExpr(self._node).items
+        else:
+            raise TypeError(f"m.items requires m to be a Map, got {self.sort}")
 
     def __getitem__(self, key: "Expr | int | bool | str | slice") -> "Expr":
         match self._node.sort:
@@ -2288,6 +2300,19 @@ class MapExpr(Expr):
             balances_seen = balances.values
         """
         return self.keys.map(lambda k: self._getitem(k))
+
+    @property
+    def items(self) -> "SetExpr":
+        """Return the set of key-value pairs in this map, as 2-element tuples.
+
+        Desugars to ``self.keys.map(lambda k: Tuple(k, self[k]))``.
+
+        Example:
+            balances_items = balances.items
+        """
+        return self.keys.map(
+            lambda k: TupleExpr(TupleCtorNode(k.node, self._getitem(k).node))
+        )
 
     def reduce(  # type: ignore[override]
         self,

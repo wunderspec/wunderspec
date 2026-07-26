@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.137.1] -- 2026-07-26
+
+Changes since public release v0.136.6.
+
+- Add `items` to `Map` expressions.
+- Document `Map.values` and `Map.items`.
+
 ## [0.136.6] -- 2026-07-10
 
 Changes since public release v0.136.4.

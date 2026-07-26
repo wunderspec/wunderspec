@@ -6,9 +6,9 @@ public distribution to keep the package focused. The full development
 
 ## Release Provenance
 
-- Release tag: `v0.136.6`
-- Source commit: `220f8984c8ea99a7debba9a0866743ede63bd482`
-- Test log captured at: `2026-07-11T11:05:26Z`
+- Release tag: `v0.137.1`
+- Source commit: `2629f8b78949bbe79e03506d42495dd6558d4686`
+- Test log captured at: `2026-07-26T09:59:55Z`
 - `make test` exit code: `0`
 
 ## Full Test Log From the Development Repository
@@ -19,7 +19,7 @@ cd . && uv run pytest
 platform linux -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0
 rootdir: /home/runner/work/wunderspec-dev/wunderspec-dev/release-source
 configfile: pyproject.toml
-plugins: pytest_codeblocks-0.17.0, subtests-0.15.0, hypothesis-6.155.2, cov-6.3.0, markdown-pytest-0.3.2
+plugins: hypothesis-6.155.2, pytest_codeblocks-0.17.0, markdown-pytest-0.3.2, cov-6.3.0, subtests-0.15.0
 collected 2459 items
 
 docs/user-references/booleans.md .                                       [  0%]
@@ -126,5 +126,5 @@ tests/test_tla.py ...................................................... [ 94%]
 tests/test_tlc_trace.py ....                                             [ 98%]
 tests/test_trace_output.py .........................                     [100%]
 
-====================== 2448 passed, 11 skipped in 32.07s =======================
+====================== 2448 passed, 11 skipped in 30.42s =======================
 ```

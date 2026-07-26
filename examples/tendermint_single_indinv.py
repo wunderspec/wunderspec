@@ -27,7 +27,6 @@ from tendermint_single import (
     VoteMsg,
     action_names,
     all_procs,
-    min_cov,
     rounds,
     rounds_or_nil,
     senders,
