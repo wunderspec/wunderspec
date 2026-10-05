@@ -95,8 +95,7 @@ from wunderspec.expr import (
     TupleExpr,
     UnionExpr,
     VarExpr,
-    _pop_gen_ctx,
-    _push_gen_ctx,
+    _GeneratorContexts,
     coerce_bool_node,
     coerce_expr,
     coerce_int_node,
@@ -111,13 +110,7 @@ BinderNames: TypeAlias = str | tuple[str, ...] | None
 
 _P = ParamSpec("_P")
 _AnnotationT = TypeVar("_AnnotationT")
-
-
-class _MissingMinMaxDefault:
-    pass
-
-
-_MIN_MAX_DEFAULT_MISSING = _MissingMinMaxDefault()
+_T = TypeVar("_T")
 
 
 class Unit:
@@ -609,7 +602,7 @@ def Set(arg0: object, *other_args: object, name: BinderNames = None) -> SetExpr:
     """
     match (arg0, other_args):
         case (gen, ()) if isinstance(gen, GeneratorType):
-            return _gen_set(gen, name=name)
+            return _GeneratorExpressions.set(gen, name=name)
 
         case (
             Expr() | int() as lower,
@@ -780,7 +773,7 @@ def Map(*args: object, name: BinderNames = None) -> MapExpr:
         >>> Map(Val(10_000) for a in ADDR)  # doctest: +SKIP
     """
     if len(args) == 1 and isinstance(args[0], GeneratorType):
-        return _gen_map(args[0], name=name)
+        return _GeneratorExpressions.map(args[0], name=name)
 
     if name is not None:
         raise TypeError("Map(..., name=...) is only valid for generators")
@@ -819,21 +812,11 @@ def Map(*args: object, name: BinderNames = None) -> MapExpr:
     )
 
 
-def _lift_to_temporal(node: Node) -> Node:
-    """Lift a node to TemporalSort if needed.
-
-    BoolSort nodes are wrapped in ToTemporalNode to give them TemporalSort.
-    TemporalSort nodes are returned as-is.
-    """
-    if isinstance(node.sort, TemporalSort):
-        return node
-    elif isinstance(node.sort, BoolSort):
-        return ToTemporalNode(node)
-    else:
-        raise TypeError(f"Expected BoolSort or TemporalSort, got {node.sort}")
+# =============================================================================
+# Logical and temporal operators
+# =============================================================================
 
 
-# Logical operators
 def And(*args: Expr | bool) -> BoolExpr:
     """Create a Boolean logical AND expression."""
     bool_nodes = [coerce_bool_node(arg) for arg in args]
@@ -860,23 +843,12 @@ def Implies(a: Expr | bool, b: Expr | bool) -> BoolExpr:
     )
 
 
-def _coerce_temporal_nodes(*args: Expr | bool) -> list[Node]:
-    """Lift Boolean inputs and keep temporal inputs as temporal nodes."""
-    temporal_nodes: list[Node] = []
-    for arg in args:
-        if isinstance(arg, bool):
-            temporal_nodes.append(ToTemporalNode(LitNode(arg)))
-        else:
-            temporal_nodes.append(_lift_to_temporal(arg._node))
-    return temporal_nodes
-
-
 def AndT(*args: Expr | bool) -> TemporalExpr:
     """Create a temporal logical AND expression."""
     if not args:
         raise ValueError("AndT requires at least one argument")
     return TemporalExpr(
-        AlgebraNode(TemporalSort(), AlgebraOp.AND, *_coerce_temporal_nodes(*args))
+        AlgebraNode(TemporalSort(), AlgebraOp.AND, *_TemporalExpressions.nodes(*args))
     )
 
 
@@ -885,21 +857,23 @@ def OrT(*args: Expr | bool) -> TemporalExpr:
     if not args:
         raise ValueError("OrT requires at least one argument")
     return TemporalExpr(
-        AlgebraNode(TemporalSort(), AlgebraOp.OR, *_coerce_temporal_nodes(*args))
+        AlgebraNode(TemporalSort(), AlgebraOp.OR, *_TemporalExpressions.nodes(*args))
     )
 
 
 def NotT(arg: Expr | bool) -> TemporalExpr:
     """Create a temporal logical NOT expression."""
     return TemporalExpr(
-        AlgebraNode(TemporalSort(), AlgebraOp.NOT, *_coerce_temporal_nodes(arg))
+        AlgebraNode(TemporalSort(), AlgebraOp.NOT, *_TemporalExpressions.nodes(arg))
     )
 
 
 def ImpliesT(a: Expr | bool, b: Expr | bool) -> TemporalExpr:
     """Create a temporal logical implication expression."""
     return TemporalExpr(
-        AlgebraNode(TemporalSort(), AlgebraOp.IMPLIES, *_coerce_temporal_nodes(a, b))
+        AlgebraNode(
+            TemporalSort(), AlgebraOp.IMPLIES, *_TemporalExpressions.nodes(a, b)
+        )
     )
 
 
@@ -967,49 +941,6 @@ def Eventually(subformula: Expr) -> TemporalExpr:
     return TemporalExpr(EventuallyNode(subformula._node))
 
 
-def _make_fairness(
-    kind: Fair, action: object, /, *args: object, vars: tuple[str, ...] = ()
-) -> TemporalExpr:
-    prefix = "WeakFair" if kind == Fair.WEAK else "StrongFair"
-    if callable(action) and not isinstance(action, Expr):
-        # Action function path: action is a @action(inline=False) decorated function
-        if not hasattr(action, "_inline"):
-            raise TypeError(
-                f"{prefix}(...) requires an @action(inline=False) decorated function, "
-                f"got: {action!r}"
-            )
-        if getattr(action, "_inline"):
-            raise TypeError(
-                f"{prefix}(...) requires the action to be marked with "
-                f"@action(inline=False), but '{getattr(action, '__name__', action)}' uses inline=True. "
-                f"Add @action(inline=False) to the action definition."
-            )
-        action_name = getattr(action, "_action_name")
-        arg_nodes = tuple(coerce_expr(a)._node for a in args)
-        dummy = AssumeNode(LitNode(True))
-        node = ActionCallNode(
-            action_name,
-            arg_nodes,
-            dummy,
-            placeholder_body=True,
-            comment=inspect.getdoc(action),
-        )
-        return TemporalExpr(FairnessNode(kind, node, vars))
-    else:
-        # Expr path (backward compatible): args are var names
-        if not isinstance(action, Expr):
-            raise TypeError(
-                f"{prefix}(...) requires an action expression or "
-                f"an @action(inline=False) decorated function"
-            )
-        if not isinstance(action._node, ActionNode):
-            raise TypeError(
-                f"{prefix}(...) requires an action expression, found: {action.sort}"
-            )
-        names = tuple(str(a) for a in args)
-        return TemporalExpr(FairnessNode(kind, action._node, names))
-
-
 def WeakFair(
     action: object, /, *args: object, vars: tuple[str, ...] = ()
 ) -> TemporalExpr:
@@ -1025,7 +956,7 @@ def WeakFair(
 
         WeakFair(action_expr, "x", "y")
     """
-    return _make_fairness(Fair.WEAK, action, *args, vars=vars)
+    return _TemporalExpressions.fairness(Fair.WEAK, action, *args, vars=vars)
 
 
 def StrongFair(
@@ -1043,7 +974,7 @@ def StrongFair(
 
         StrongFair(action_expr, "x", "y")
     """
-    return _make_fairness(Fair.STRONG, action, *args, vars=vars)
+    return _TemporalExpressions.fairness(Fair.STRONG, action, *args, vars=vars)
 
 
 def Ite(cond: Union[BoolExpr, bool], then_expr: ExprLike, else_expr: ExprLike) -> Expr:
@@ -1072,76 +1003,9 @@ def Ite(cond: Union[BoolExpr, bool], then_expr: ExprLike, else_expr: ExprLike) -
     return expr_from_node(node)
 
 
-def _min_max(
-    args: tuple[Expr | int, ...],
-    *,
-    is_max: bool,
-    default: ExprLike | _MissingMinMaxDefault = _MIN_MAX_DEFAULT_MISSING,
-) -> IntExpr:
-    """Shared implementation of ``Min``/``Max``.
-
-    Both are pure syntactic sugar: a list of scalar integers folds into nested
-    ``Ite``, while a single set/list aggregates via ``reduce`` seeded with the
-    required ``default=`` value. The TLA+ backend recognizes this exact
-    collection-reducer shape and renders it with ``CHOOSE``.
-    """
-    name = "Max" if is_max else "Min"
-
-    def keeps_new(new: Expr, acc: Expr) -> BoolExpr:
-        # On ties keep the running accumulator (first operand wins).
-        return new > acc if is_max else new < acc
-
-    if not args:
-        raise ValueError(f"{name}() requires at least one argument")
-
-    # Collection form: a single set or list of integers.
-    if (
-        len(args) == 1
-        and isinstance(args[0], Expr)
-        and isinstance(args[0].sort, (SetSort, ListSort))
-    ):
-        if isinstance(default, _MissingMinMaxDefault):
-            raise TypeError(f"{name}(collection) requires default=...")
-        coll = args[0]
-        coll_sort = coll.sort
-        assert isinstance(coll_sort, (SetSort, ListSort))
-        elem_sort = coll_sort.elem_sort
-        if elem_sort != IntSort():
-            raise TypeError(
-                f"{name}(collection) requires integer elements, got {elem_sort}"
-            )
-        initial = coerce_expr(default)
-        if initial.sort != IntSort():
-            raise TypeError(
-                f"{name}(collection) requires integer default, got {initial.sort}"
-            )
-        result = coll.reduce(lambda acc, x: Ite(keeps_new(x, acc), x, acc), initial)
-        return IntExpr(result._node)
-
-    if not isinstance(default, _MissingMinMaxDefault):
-        raise TypeError(f"{name}() only accepts default=... with a single collection")
-
-    # Scalar form: one or more integers.
-    exprs: list[Expr] = []
-    for arg in args:
-        if isinstance(arg, Expr) and isinstance(arg.sort, (SetSort, ListSort)):
-            raise TypeError(
-                f"{name}() does not accept a collection alongside other arguments"
-            )
-        expr = coerce_expr(arg)
-        if expr.sort != IntSort():
-            raise TypeError(f"{name}() requires integer arguments, got {expr.sort}")
-        exprs.append(expr)
-
-    acc = exprs[0]
-    for nxt in exprs[1:]:
-        acc = Ite(keeps_new(nxt, acc), nxt, acc)
-    return IntExpr(acc._node)
-
-
 def Max(
     *args: Expr | int,
-    default: ExprLike | _MissingMinMaxDefault = _MIN_MAX_DEFAULT_MISSING,
+    default: ExprLike | None = None,
 ) -> IntExpr:
     """Maximum of several integers (``Max(a, b, ...)``) or of a single set or
     list of integers (``Max(s, default=d)``).
@@ -1150,26 +1014,24 @@ def Max(
     ``reduce`` seeded with the mandatory ``default=`` value. The TLA+ backend
     renders this collection form with ``CHOOSE``.
     """
-    return _min_max(args, is_max=True, default=default)
+    return _MinMax.evaluate(args, is_max=True, default=default)
 
 
 def Min(
     *args: Expr | int,
-    default: ExprLike | _MissingMinMaxDefault = _MIN_MAX_DEFAULT_MISSING,
+    default: ExprLike | None = None,
 ) -> IntExpr:
     """Minimum of several integers (``Min(a, b, ...)``) or of a single set or
     list of integers (``Min(s, default=d)``).
 
     See :func:`Max` for the desugaring.
     """
-    return _min_max(args, is_max=False, default=default)
+    return _MinMax.evaluate(args, is_max=False, default=default)
 
 
 # =============================================================================
-# Record decorator for symbolic record types
+# Symbolic type decorators
 # =============================================================================
-
-_T = TypeVar("_T")
 
 
 @dataclass_transform(kw_only_default=True)
@@ -1281,11 +1143,6 @@ def record(cls: type[_T]) -> type[_T]:
     return new_cls  # type: ignore[return-value]
 
 
-# =============================================================================
-# Union decorator for symbolic union (sum) types
-# =============================================================================
-
-
 def union(cls: type[_T]) -> type[_T]:
     """Decorator that transforms a class with annotated fields into a symbolic union type.
 
@@ -1380,89 +1237,8 @@ def union(cls: type[_T]) -> type[_T]:
 
 
 # =============================================================================
-# Generator expression consuming functions
+# Generator expressions
 # =============================================================================
-
-
-def _normalize_binder_names(name: BinderNames) -> tuple[str, ...] | None:
-    if name is None:
-        return None
-    names = (name,) if isinstance(name, str) else name
-    if any(not isinstance(n, str) for n in names):
-        raise TypeError("generator binder names must be strings")
-    if any(n == "" for n in names):
-        raise ValueError("generator binder names must not be empty")
-    if len(set(names)) != len(names):
-        raise ValueError("generator binder names must be unique")
-    return names
-
-
-def _consume_generator(gen, *, name: BinderNames = None):
-    """Push context, consume one value from generator, return (bindings, body)."""
-    names = _normalize_binder_names(name)
-    ctx = _push_gen_ctx(names)
-    try:
-        body = next(gen)
-        if names is not None and len(names) != len(ctx.bindings):
-            raise ValueError(
-                f"name has {len(names)} entries, but the generator has "
-                f"{len(ctx.bindings)} binding(s)"
-            )
-        return ctx.bindings, body
-    except StopIteration:
-        return ctx.bindings, None
-    finally:
-        _pop_gen_ctx()
-
-
-def _build_bindings_nodes(
-    bindings: list[tuple[Expr, Expr]],
-) -> list[tuple[VarNode, Node]]:
-    """Convert (VarExpr, SetExpr/ListExpr) pairs to (VarNode, Node) pairs."""
-    var_nodes: list[tuple[VarNode, Node]] = []
-    for v, d in bindings:
-        if not isinstance(v._node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(v._node).__name__}")
-        var_nodes.append(
-            (
-                VarNode(
-                    v._node.name,
-                    v._node.sort,
-                    unique_name=v._node.unique_name,
-                    tla_name=v._node.tla_name,
-                ),
-                d._node,
-            )
-        )
-    return var_nodes
-
-
-def _quant(
-    gen, quant_op: QuantOp, empty_val: bool, *, name: BinderNames = None
-) -> BoolExpr | TemporalExpr:
-    """Build a quantifier expression from a generator.
-
-    Shared implementation for ``Forall`` and ``Exists``.
-    """
-    bindings, body = _consume_generator(gen, name=name)
-    if body is None:
-        return BoolExpr(LitNode(empty_val))
-    if not bindings:
-        raise ValueError(f"{quant_op.value} requires at least one 'for' clause")
-    var_nodes = _build_bindings_nodes(bindings)
-    quant_node = SetQuantNode(
-        quant_op, bindings=var_nodes, body=body._node, sort=body.sort
-    )
-    match body.sort:
-        case BoolSort():
-            return BoolExpr(quant_node)
-        case TemporalSort():
-            return TemporalExpr(quant_node)
-        case _:
-            raise TypeError(
-                f"{quant_op.value} body must be BoolExpr or TemporalExpr, "
-                f"got {body.sort}"
-            )
 
 
 @overload
@@ -1495,7 +1271,7 @@ def Forall(
         Forall(x > Val(0) for x in S)           # ∀x ∈ S : x > 0
         Forall(x + y > Val(0) for x in S1 for y in S2)  # ∀x ∈ S1, y ∈ S2 : x+y > 0
     """
-    return _quant(gen, QuantOp.FORALL, True, name=name)
+    return _GeneratorExpressions.quantify(gen, QuantOp.FORALL, True, name=name)
 
 
 @overload
@@ -1528,19 +1304,7 @@ def Exists(
         Exists(x > Val(0) for x in S)           # ∃x ∈ S : x > 0
         Exists(x + y > Val(0) for x in S1 for y in S2)  # ∃x ∈ S1, y ∈ S2 : x+y > 0
     """
-    return _quant(gen, QuantOp.EXISTS, False, name=name)
-
-
-def _gen_set(gen: Generator[Expr, None, None], *, name: BinderNames = None) -> SetExpr:
-    """Set comprehension via generator expression (internal, called by Set)."""
-    bindings, body = _consume_generator(gen, name=name)
-    if body is None:
-        raise ValueError("Set comprehension over empty domain")
-    if not bindings:
-        raise ValueError("Set comprehension requires at least one 'for' clause")
-    var_nodes = _build_bindings_nodes(bindings)
-    body = coerce_expr(body)
-    return SetExpr(SetMapNode(bindings=var_nodes, body=body._node))
+    return _GeneratorExpressions.quantify(gen, QuantOp.EXISTS, False, name=name)
 
 
 def SetIf(gen: Generator[Expr, None, None], *, name: BinderNames = None) -> SetExpr:
@@ -1550,39 +1314,299 @@ def SetIf(gen: Generator[Expr, None, None], *, name: BinderNames = None) -> SetE
 
         SetIf(x > Val(3) for x in S)            # { x ∈ S : x > 3 }
     """
-    bindings, body = _consume_generator(gen, name=name)
-    if body is None:
-        raise ValueError("SetIf over empty domain")
-    if not bindings:
-        raise ValueError("SetIf requires at least one 'for' clause")
-    var_nodes = _build_bindings_nodes(bindings)
-    body = coerce_expr(body)
-    return SetExpr(SetFilterNode(bindings=var_nodes, body=body._node))
+    return _GeneratorExpressions.filtered_set(gen, name=name)
 
 
-def _gen_map(gen: Generator[Expr, None, None], *, name: BinderNames = None) -> MapExpr:
-    """Map comprehension via generator (internal, called by Map).
+# =============================================================================
+# Internal helper namespaces
+# =============================================================================
 
-    Builds ``[x ∈ S ↦ f(x)]``; requires exactly one 'for' clause.
-    """
-    bindings, body = _consume_generator(gen, name=name)
-    if body is None:
-        raise ValueError("Map comprehension over empty domain")
-    if len(bindings) != 1:
-        raise ValueError("Map comprehension requires exactly one 'for' clause")
-    var, domain = bindings[0]
-    if not isinstance(var._node, VarNode):
-        raise TypeError(f"Expected VarNode, got {type(var._node).__name__}")
-    body = coerce_expr(body)
-    return MapExpr(
-        MapLambdaNode(
-            domain._node,
-            VarNode(
-                var._node.name,
-                var._node.sort,
-                unique_name=var._node.unique_name,
-                tla_name=var._node.tla_name,
-            ),
-            body._node,
+
+class _TemporalExpressions:
+    """Build shared temporal and fairness expression structures."""
+
+    @staticmethod
+    def lift(node: Node) -> Node:
+        if isinstance(node.sort, TemporalSort):
+            return node
+        if isinstance(node.sort, BoolSort):
+            return ToTemporalNode(node)
+        raise TypeError(f"Expected BoolSort or TemporalSort, got {node.sort}")
+
+    @staticmethod
+    def nodes(*args: Expr | bool) -> list[Node]:
+        temporal_nodes: list[Node] = []
+        for arg in args:
+            if isinstance(arg, bool):
+                temporal_nodes.append(ToTemporalNode(LitNode(arg)))
+            else:
+                temporal_nodes.append(_TemporalExpressions.lift(arg._node))
+        return temporal_nodes
+
+    @staticmethod
+    def fairness(
+        kind: Fair,
+        action: object,
+        /,
+        *args: object,
+        vars: tuple[str, ...] = (),
+    ) -> TemporalExpr:
+        prefix = "WeakFair" if kind == Fair.WEAK else "StrongFair"
+        if callable(action) and not isinstance(action, Expr):
+            if not hasattr(action, "_inline"):
+                raise TypeError(
+                    f"{prefix}(...) requires an @action(inline=False) decorated "
+                    f"function, got: {action!r}"
+                )
+            if getattr(action, "_inline"):
+                raise TypeError(
+                    f"{prefix}(...) requires the action to be marked with "
+                    f"@action(inline=False), but "
+                    f"'{getattr(action, '__name__', action)}' uses inline=True. "
+                    f"Add @action(inline=False) to the action definition."
+                )
+            action_name = getattr(action, "_action_name")
+            arg_nodes = tuple(coerce_expr(arg)._node for arg in args)
+            dummy = AssumeNode(LitNode(True))
+            node = ActionCallNode(
+                action_name,
+                arg_nodes,
+                dummy,
+                placeholder_body=True,
+                comment=inspect.getdoc(action),
+            )
+            return TemporalExpr(FairnessNode(kind, node, vars))
+
+        if not isinstance(action, Expr):
+            raise TypeError(
+                f"{prefix}(...) requires an action expression or "
+                f"an @action(inline=False) decorated function"
+            )
+        if not isinstance(action._node, ActionNode):
+            raise TypeError(
+                f"{prefix}(...) requires an action expression, found: {action.sort}"
+            )
+        names = tuple(str(arg) for arg in args)
+        return TemporalExpr(FairnessNode(kind, action._node, names))
+
+
+class _MinMax:
+    """Implement the shared scalar and collection forms of Min and Max."""
+
+    @staticmethod
+    def evaluate(
+        args: tuple[Expr | int, ...],
+        *,
+        is_max: bool,
+        default: ExprLike | None = None,
+    ) -> IntExpr:
+        name = "Max" if is_max else "Min"
+
+        def keeps_new(new: Expr, acc: Expr) -> BoolExpr:
+            return new > acc if is_max else new < acc
+
+        if not args:
+            raise ValueError(f"{name}() requires at least one argument")
+
+        if (
+            len(args) == 1
+            and isinstance(args[0], Expr)
+            and isinstance(args[0].sort, (SetSort, ListSort))
+        ):
+            if default is None:
+                raise TypeError(f"{name}(collection) requires default=...")
+            collection = args[0]
+            collection_sort = collection.sort
+            assert isinstance(collection_sort, (SetSort, ListSort))
+            elem_sort = collection_sort.elem_sort
+            if elem_sort != IntSort():
+                raise TypeError(
+                    f"{name}(collection) requires integer elements, got {elem_sort}"
+                )
+            initial = coerce_expr(default)
+            if initial.sort != IntSort():
+                raise TypeError(
+                    f"{name}(collection) requires integer default, got {initial.sort}"
+                )
+            result = collection.reduce(
+                lambda acc, x: Ite(keeps_new(x, acc), x, acc), initial
+            )
+            return IntExpr(result._node)
+
+        if default is not None:
+            raise TypeError(
+                f"{name}() only accepts default=... with a single collection"
+            )
+
+        expressions: list[Expr] = []
+        for arg in args:
+            if isinstance(arg, Expr) and isinstance(arg.sort, (SetSort, ListSort)):
+                raise TypeError(
+                    f"{name}() does not accept a collection alongside other arguments"
+                )
+            expression = coerce_expr(arg)
+            if expression.sort != IntSort():
+                raise TypeError(
+                    f"{name}() requires integer arguments, got {expression.sort}"
+                )
+            expressions.append(expression)
+
+        result = expressions[0]
+        for expression in expressions[1:]:
+            result = Ite(
+                keeps_new(expression, result),
+                expression,
+                result,
+            )
+        return IntExpr(result._node)
+
+
+class _GeneratorExpressions:
+    """Consume generators and build their symbolic expression nodes."""
+
+    @staticmethod
+    def normalize_names(name: BinderNames) -> tuple[str, ...] | None:
+        if name is None:
+            return None
+        names = (name,) if isinstance(name, str) else name
+        if any(not isinstance(item, str) for item in names):
+            raise TypeError("generator binder names must be strings")
+        if any(item == "" for item in names):
+            raise ValueError("generator binder names must not be empty")
+        if len(set(names)) != len(names):
+            raise ValueError("generator binder names must be unique")
+        return names
+
+    @staticmethod
+    def consume(gen, *, name: BinderNames = None):
+        names = _GeneratorExpressions.normalize_names(name)
+        with _GeneratorContexts.activate(names) as context:
+            try:
+                body = next(gen)
+                if names is not None and len(names) != len(context.bindings):
+                    raise ValueError(
+                        f"name has {len(names)} entries, but the generator has "
+                        f"{len(context.bindings)} binding(s)"
+                    )
+                return context.bindings, body
+            except StopIteration:
+                return context.bindings, None
+
+    @staticmethod
+    def binding_nodes(
+        bindings: list[tuple[Expr, Expr]],
+    ) -> list[tuple[VarNode, Node]]:
+        nodes: list[tuple[VarNode, Node]] = []
+        for variable, domain in bindings:
+            if not isinstance(variable._node, VarNode):
+                raise TypeError(
+                    f"Expected VarNode, got {type(variable._node).__name__}"
+                )
+            nodes.append(
+                (
+                    VarNode(
+                        variable._node.name,
+                        variable._node.sort,
+                        unique_name=variable._node.unique_name,
+                        tla_name=variable._node.tla_name,
+                    ),
+                    domain._node,
+                )
+            )
+        return nodes
+
+    @staticmethod
+    def quantify(
+        gen,
+        quant_op: QuantOp,
+        empty_val: bool,
+        *,
+        name: BinderNames = None,
+    ) -> BoolExpr | TemporalExpr:
+        bindings, body = _GeneratorExpressions.consume(gen, name=name)
+        if body is None:
+            return BoolExpr(LitNode(empty_val))
+        if not bindings:
+            raise ValueError(f"{quant_op.value} requires at least one 'for' clause")
+        quant_node = SetQuantNode(
+            quant_op,
+            bindings=_GeneratorExpressions.binding_nodes(bindings),
+            body=body._node,
+            sort=body.sort,
         )
-    )
+        match body.sort:
+            case BoolSort():
+                return BoolExpr(quant_node)
+            case TemporalSort():
+                return TemporalExpr(quant_node)
+            case _:
+                raise TypeError(
+                    f"{quant_op.value} body must be BoolExpr or TemporalExpr, "
+                    f"got {body.sort}"
+                )
+
+    @staticmethod
+    def set(
+        gen: Generator[Expr, None, None],
+        *,
+        name: BinderNames = None,
+    ) -> SetExpr:
+        bindings, body = _GeneratorExpressions.consume(gen, name=name)
+        if body is None:
+            raise ValueError("Set comprehension over empty domain")
+        if not bindings:
+            raise ValueError("Set comprehension requires at least one 'for' clause")
+        body = coerce_expr(body)
+        return SetExpr(
+            SetMapNode(
+                bindings=_GeneratorExpressions.binding_nodes(bindings),
+                body=body._node,
+            )
+        )
+
+    @staticmethod
+    def filtered_set(
+        gen: Generator[Expr, None, None],
+        *,
+        name: BinderNames = None,
+    ) -> SetExpr:
+        bindings, body = _GeneratorExpressions.consume(gen, name=name)
+        if body is None:
+            raise ValueError("SetIf over empty domain")
+        if not bindings:
+            raise ValueError("SetIf requires at least one 'for' clause")
+        body = coerce_expr(body)
+        return SetExpr(
+            SetFilterNode(
+                bindings=_GeneratorExpressions.binding_nodes(bindings),
+                body=body._node,
+            )
+        )
+
+    @staticmethod
+    def map(
+        gen: Generator[Expr, None, None],
+        *,
+        name: BinderNames = None,
+    ) -> MapExpr:
+        bindings, body = _GeneratorExpressions.consume(gen, name=name)
+        if body is None:
+            raise ValueError("Map comprehension over empty domain")
+        if len(bindings) != 1:
+            raise ValueError("Map comprehension requires exactly one 'for' clause")
+        variable, domain = bindings[0]
+        if not isinstance(variable._node, VarNode):
+            raise TypeError(f"Expected VarNode, got {type(variable._node).__name__}")
+        body = coerce_expr(body)
+        return MapExpr(
+            MapLambdaNode(
+                domain._node,
+                VarNode(
+                    variable._node.name,
+                    variable._node.sort,
+                    unique_name=variable._node.unique_name,
+                    tla_name=variable._node.tla_name,
+                ),
+                body._node,
+            )
+        )

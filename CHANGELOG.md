@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.137.3] -- 2026-10-05
+
+Changes since public release v0.137.1.
+
+- Fix AST pickle loading that could execute arbitrary code through `builtins.eval`
+  and other globals. Allow only explicit AST and sort classes and the internal
+  AST enums; reject pickle extensions that bypass the class allowlist.
+- Deprecate `save_ast` and `load_ast` in favor of `wunderspec.transfer`, planned
+  for v0.138.0. Load pickle files only if you produced them yourself.
+
 ## [0.137.1] -- 2026-07-26
 
 Changes since public release v0.136.6.

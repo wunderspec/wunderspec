@@ -87,17 +87,20 @@ commands are not included in this package.
 
 ## 4. Release Provenance
 
-- Release tag: `v0.137.1`
-- Source commit: `2629f8b78949bbe79e03506d42495dd6558d4686`
+- Release tag: `v0.137.3`
+- Source commit: `be86a4dd5da2668b37f5287a80ab13ef025b645c`
 
 See [tests/README.md][] for the development test log captured at release time.
 
 ## 5. Latest Release Notes
 
-Changes since public release v0.136.6.
+Changes since public release v0.137.1.
 
-- Add `items` to `Map` expressions.
-- Document `Map.values` and `Map.items`.
+- Fix AST pickle loading that could execute arbitrary code through `builtins.eval`
+  and other globals. Allow only explicit AST and sort classes and the internal
+  AST enums; reject pickle extensions that bypass the class allowlist.
+- Deprecate `save_ast` and `load_ast` in favor of `wunderspec.transfer`, planned
+  for v0.138.0. Load pickle files only if you produced them yourself.
 
 ## 6. License
 

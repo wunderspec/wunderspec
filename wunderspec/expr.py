@@ -14,13 +14,9 @@ expressions of the desired type.
 Igor Konnov, 2025-2026
 """
 
-# =============================================================================
-# Base Expr wrapper
-# =============================================================================
-
-
 import inspect
 import threading
+from contextlib import contextmanager
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Type, cast, overload
 
@@ -75,103 +71,14 @@ from wunderspec.ast.union_ast import UnionGetTagNode, UnionMatchNode
 from wunderspec.uniq_names import fresh_name
 
 # =============================================================================
-# Generator context for Forall/Exists/Set/SetIf/Map
+# Expression hierarchy
 # =============================================================================
-
-_gen_ctx = threading.local()
-
-
-class _GeneratorContext:
-    """Tracks variable bindings during generator expression consumption."""
-
-    def __init__(self, names: tuple[str, ...] | None = None):
-        self.bindings: list[tuple["Expr", "Expr"]] = []  # (variable, domain)
-        self.names = names
-
-    def var(self, default_prefix: str, sort: Sort) -> "VarExpr":
-        index = len(self.bindings)
-        if self.names is None:
-            return VarExpr(fresh_name(default_prefix), sort)
-        if index >= len(self.names):
-            raise ValueError(
-                f"name has {len(self.names)} entries, but the generator has more bindings"
-            )
-        name = self.names[index]
-        return VarExpr(name, sort, unique_name=fresh_name(name), tla_name=name)
-
-
-def _push_gen_ctx(names: tuple[str, ...] | None = None) -> _GeneratorContext:
-    if not hasattr(_gen_ctx, "stack"):
-        _gen_ctx.stack = []
-    if names is not None:
-        active_names = {
-            name
-            for ctx in _gen_ctx.stack
-            for name in (() if ctx.names is None else ctx.names)
-        }
-        duplicate = active_names.intersection(names)
-        if duplicate:
-            names_str = ", ".join(sorted(duplicate))
-            raise ValueError(f"duplicate active generator name(s): {names_str}")
-    ctx = _GeneratorContext(names)
-    _gen_ctx.stack.append(ctx)
-    return ctx
-
-
-def _pop_gen_ctx():
-    _gen_ctx.stack.pop()
-
-
-def _current_gen_ctx() -> _GeneratorContext | None:
-    stack = getattr(_gen_ctx, "stack", [])
-    return stack[-1] if stack else None
-
-
-def _is_record_field_attribute(name: str) -> bool:
-    """Return whether a public attribute name may be a record field."""
-    return not name.startswith("_") and not (
-        name.startswith("__") and name.endswith("__")
-    )
-
-
-class _ExprOps:
-    """Namespace for expression operations shadowed by record fields."""
-
-    def __init__(self, expr: "Expr"):
-        object.__setattr__(self, "_expr", expr)
-
-    @property
-    def node(self) -> Node:
-        expr = cast(Expr, object.__getattribute__(self, "_expr"))
-        return cast(Node, object.__getattribute__(expr, "_node"))
-
-    @property
-    def sort(self) -> Sort:
-        return self.node.sort
-
-    @property
-    def name(self) -> str:
-        node = self.node
-        if isinstance(node, VarNode):
-            return node.name
-        raise AttributeError(f"{type(node).__name__} has no variable name")
-
-    @property
-    def unique_name(self) -> str | None:
-        node = self.node
-        if isinstance(node, VarNode):
-            return node.unique_name
-        raise AttributeError(f"{type(node).__name__} has no unique variable name")
-
-    def __getattr__(self, name: str) -> Any:
-        expr = object.__getattribute__(self, "_expr")
-        return object.__getattribute__(expr, name)
 
 
 class Expr:
     """
-    Unified expression builder. Expr implement fat base class to play well
-    with static type checkers and IDE autocompletion. However, it the static
+    Unified expression builder. Expr implements a fat base class to play well
+    with static type checkers and IDE autocompletion. However, the static
     type checker may miss certain sort errors, e.g., when dealing with nested maps
     and records. Therefore, all Expr methods perform sort checks at runtime.
 
@@ -215,14 +122,16 @@ class Expr:
 
     _node: Node
 
-    def __init__(self, node: Node):
+    def __init__(self, node: Node) -> None:
         if not isinstance(node, Node):
             raise TypeError(f"Expected Node, got {type(node).__name__}")
         self._node = node
 
+    # Core metadata and rendering
+
     def __getattribute__(self, name: str) -> "Expr":
         """Prefer record fields over expression attributes for public names."""
-        if _is_record_field_attribute(name):
+        if _RecordFields.is_field_attribute(name):
             try:
                 node = object.__getattribute__(self, "_node")
             except AttributeError:
@@ -268,10 +177,10 @@ class Expr:
             raise TypeError(f"Called .match on non-union sort: {self._node.sort}")
         return UnionExpr(self._node).match(default, **cases)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._node)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._node)
 
     def __bool__(self) -> bool:
@@ -290,7 +199,7 @@ class Expr:
         """
         return self._node.pretty(max_width)
 
-    def _repr_pretty_(self, p, cycle):
+    def _repr_pretty_(self, p: Any, cycle: bool) -> None:
         """IPython pretty printing support."""
         self._node._repr_pretty_(p, cycle)
 
@@ -300,37 +209,29 @@ class Expr:
 
         return to_rich(self.pretty())
 
-    def __eq__(self, other: object) -> "BoolExpr":  # type: ignore[override]
-        """Equality comparison: self == other."""
+    def _equality_comparison(self, other: object, operation: AlgebraOp) -> "BoolExpr":
+        """Build an equality-family expression after checking operand sorts."""
         if isinstance(other, Expr):
             if self._node.sort != other._node.sort:
                 raise TypeError(
                     f"Cannot compare expressions of different sorts: {self._node.sort} and {other._node.sort}"
                 )
-            return BoolExpr(
-                AlgebraNode(BoolSort(), AlgebraOp.EQ, self._node, other._node)
-            )
-        # Try to coerce Python literals, enums, etc.
+            return BoolExpr(AlgebraNode(BoolSort(), operation, self._node, other._node))
+
         coerced_other = coerce_expr(other, self._node.sort)
         return BoolExpr(
-            AlgebraNode(BoolSort(), AlgebraOp.EQ, self._node, coerced_other._node)
+            AlgebraNode(BoolSort(), operation, self._node, coerced_other._node)
         )
+
+    def __eq__(self, other: object) -> "BoolExpr":  # type: ignore[override]
+        """Equality comparison: self == other."""
+        return self._equality_comparison(other, AlgebraOp.EQ)
 
     def __ne__(self, other: object) -> "BoolExpr":  # type: ignore[override]
         """Inequality comparison: self != other."""
-        if isinstance(other, Expr):
-            if self._node.sort != other._node.sort:
-                raise TypeError(
-                    f"Cannot compare expressions of different sorts: {self._node.sort} and {other._node.sort}"
-                )
-            return BoolExpr(
-                AlgebraNode(BoolSort(), AlgebraOp.NE, self._node, other._node)
-            )
-        # Try to coerce Python literals, enums, etc.
-        coerced_other = coerce_expr(other, self._node.sort)
-        return BoolExpr(
-            AlgebraNode(BoolSort(), AlgebraOp.NE, self._node, coerced_other._node)
-        )
+        return self._equality_comparison(other, AlgebraOp.NE)
+
+    # Cross-sort convenience methods
 
     @property
     def is_empty(self) -> "BoolExpr":
@@ -348,7 +249,7 @@ class Expr:
                     BoolSort(), AlgebraOp.EQ, self._node, SetEnumNode(sort.elem_sort)
                 )
             )
-        elif isinstance(sort, MapSort):
+        if isinstance(sort, MapSort):
             return BoolExpr(
                 AlgebraNode(
                     BoolSort(),
@@ -357,26 +258,24 @@ class Expr:
                     SetEnumNode(sort.key_sort),
                 )
             )
-        elif isinstance(sort, ListSort):
+        if isinstance(sort, ListSort):
             return BoolExpr(
                 AlgebraNode(
                     BoolSort(), AlgebraOp.EQ, self._node, ListEnumNode(sort.elem_sort)
                 )
             )
-        else:
-            raise TypeError(f"is_empty is not supported for sort: {sort}")
+        raise TypeError(f"is_empty is not supported for sort: {sort}")
 
     # Set membership is available for all expressions, to keep the static type checker happy.
     def in_(self, set_expr: "Expr") -> "BoolExpr":
         """Set membership: self ∈ set_expr."""
         if not isinstance(set_expr.sort, SetSort):
             raise TypeError(f"Expected SetSort for set_expr, got {set_expr.sort}")
-        else:
-            if self.sort != set_expr.sort.elem_sort:
-                raise TypeError(
-                    f"Element {self} has sort {self.sort}, expected {set_expr.sort.elem_sort}"
-                )
-            return BoolExpr(InNode(self._node, set_expr._node))
+        if self.sort != set_expr.sort.elem_sort:
+            raise TypeError(
+                f"Element {self} has sort {self.sort}, expected {set_expr.sort.elem_sort}"
+            )
+        return BoolExpr(InNode(self._node, set_expr._node))
 
     def if_(self, condition: "Expr | bool") -> "_ConditionalBuilder":
         """Construct an if-then-else expression.
@@ -402,6 +301,8 @@ class Expr:
     # Note that operator overloading works at class-level, so it is not
     # sufficient to define operators only in subclasses.
 
+    # Operator dispatch
+
     def upto(self, other: "Expr | int") -> "SetExpr":
         """Create an interval set: `{ x in Int : self <= x and x <= other }`."""
         if not isinstance(self.sort, IntSort):
@@ -415,7 +316,7 @@ class Expr:
         yields a symbolic variable bound to the collection.
         """
         if isinstance(self.sort, (SetSort, ListSort)):
-            ctx = _current_gen_ctx()
+            ctx = _GeneratorContexts.current()
             if ctx is not None:
                 if isinstance(self.sort, SetSort):
                     var = ctx.var("_v", self.sort.elem_sort)
@@ -763,6 +664,8 @@ class Expr:
             raise TypeError(f"s.issubset(...) requires s to be a Set, got {self.sort}")
         return SetExpr(self._node).issubset(other)
 
+    # Sort-specific method dispatch
+
     def filter(self, predicate: Callable[["Expr"], "Expr"]) -> "Expr":
         """Filter set or list elements by predicate."""
         if isinstance(self.sort, SetSort):
@@ -887,6 +790,8 @@ class Expr:
             return MapExpr(self._node).items
         else:
             raise TypeError(f"m.items requires m to be a Map, got {self.sort}")
+
+    # Indexing and functional updates
 
     def __getitem__(self, key: "Expr | int | bool | str | slice") -> "Expr":
         match self._node.sort:
@@ -1049,7 +954,7 @@ class Expr:
                 )
 
         ctx = UpdateContext(self, name_prefix, replace_only)
-        return UpdatesBuilder(ctx, tuple([]), expr_from_node(ctx.updated_node))
+        return UpdatesBuilder(ctx, (), expr_from_node(ctx.updated_node))
 
     def contains(self, elem: "Expr | bool | int | str") -> "BoolExpr":
         """Check membership: elem ∈ self."""
@@ -1097,25 +1002,6 @@ class Expr:
         return len(self._node.sort.elem_sorts)
 
 
-class _ConditionalBuilder:
-    """Helper class to build conditional expressions (if-then-else)."""
-
-    def __init__(self, condition: "BoolExpr", then_expr: "Expr"):
-        self.condition = condition
-        self.then_expr = then_expr
-
-    def else_(self, else_expr: "Expr | int | str | bool | Enum") -> "Expr":
-        """Complete the if-then-else expression.
-
-        The else branch may be an ``Expr`` or a raw Python literal (``int``,
-        ``str``, ``bool``, ``Enum``), which is auto-coerced to the sort of the
-        then branch. A mismatched sort raises ``TypeError``.
-        """
-        else_coerced = coerce_expr(else_expr, self.then_expr._node.sort)
-        node = IteNode(self.condition._node, self.then_expr._node, else_coerced._node)
-        return expr_from_node(node)
-
-
 # =============================================================================
 # Integer expressions
 # =============================================================================
@@ -1124,56 +1010,28 @@ class _ConditionalBuilder:
 class IntExpr(Expr):
     """Integer expression with arithmetic operators."""
 
-    def __init__(self, node: Node):
-        super().__init__(node)
-
-    def __dir__(self):
+    def __dir__(self) -> list[str]:
         """Provide explicit list of attributes for better tab completion in IPython."""
-        return [
-            # Methods
+        return _Completion.names(
             "if_",
             "in_",
             "upto",
-            # Inherited from object
-            "__class__",
-            "__delattr__",
-            "__dict__",
-            "__dir__",
-            "__doc__",
-            "__eq__",
-            "__format__",
-            "__ge__",
-            "__getattribute__",
-            "__gt__",
-            "__hash__",
-            "__init__",
-            "__init_subclass__",
-            "__le__",
-            "__lt__",
-            "__ne__",
-            "__new__",
-            "__reduce__",
-            "__reduce_ex__",
-            "__repr__",
-            "__setattr__",
-            "__sizeof__",
-            "__str__",
-            "__subclasshook__",
-            # Arithmetic operators
-            "__add__",
-            "__radd__",
-            "__sub__",
-            "__rsub__",
-            "__mul__",
-            "__rmul__",
-            "__truediv__",
-            "__rtruediv__",
-            "__mod__",
-            "__rmod__",
-            "__pow__",
-            "__rpow__",
-            "__neg__",
-        ]
+            operators=(
+                "__add__",
+                "__radd__",
+                "__sub__",
+                "__rsub__",
+                "__mul__",
+                "__rmul__",
+                "__truediv__",
+                "__rtruediv__",
+                "__mod__",
+                "__rmod__",
+                "__pow__",
+                "__rpow__",
+                "__neg__",
+            ),
+        )
 
     @property
     def value(self) -> int:
@@ -1191,49 +1049,49 @@ class IntExpr(Expr):
         """Create an interval set: `{ x in Int : self <= x and x <= other }`."""
         return SetExpr(IntervalNode(self._node, coerce_int_node(other)))
 
-    def _add(self, other: "Expr | int") -> "IntExpr":
+    def _binary_operation(self, operation: AlgebraOp, other: "Expr | int") -> "IntExpr":
         other_node = coerce_int_node(other)
-        return IntExpr(AlgebraNode(IntSort(), AlgebraOp.ADD, self._node, other_node))
+        return IntExpr(AlgebraNode(IntSort(), operation, self._node, other_node))
+
+    def _comparison_operation(
+        self, operation: AlgebraOp, other: "Expr | int"
+    ) -> "BoolExpr":
+        other_node = coerce_int_node(other)
+        return BoolExpr(AlgebraNode(BoolSort(), operation, self._node, other_node))
+
+    def _add(self, other: "Expr | int") -> "IntExpr":
+        return self._binary_operation(AlgebraOp.ADD, other)
 
     def _sub(self, other: "Expr | int") -> "IntExpr":
-        other_node = coerce_int_node(other)
-        return IntExpr(AlgebraNode(IntSort(), AlgebraOp.SUB, self._node, other_node))
+        return self._binary_operation(AlgebraOp.SUB, other)
 
     def _mul(self, other: "Expr | int") -> "IntExpr":
-        other_node = coerce_int_node(other)
-        return IntExpr(AlgebraNode(IntSort(), AlgebraOp.MUL, self._node, other_node))
+        return self._binary_operation(AlgebraOp.MUL, other)
 
     def _div(self, other: "Expr | int") -> "IntExpr":
-        other_node = coerce_int_node(other)
-        return IntExpr(AlgebraNode(IntSort(), AlgebraOp.DIV, self._node, other_node))
+        return self._binary_operation(AlgebraOp.DIV, other)
 
     def _mod(self, other: "Expr | int") -> "IntExpr":
-        other_node = coerce_int_node(other)
-        return IntExpr(AlgebraNode(IntSort(), AlgebraOp.MOD, self._node, other_node))
+        return self._binary_operation(AlgebraOp.MOD, other)
 
     def _pow(self, other: "Expr | int") -> "IntExpr":
-        other_node = coerce_int_node(other)
-        return IntExpr(AlgebraNode(IntSort(), AlgebraOp.POW, self._node, other_node))
+        return self._binary_operation(AlgebraOp.POW, other)
 
     def _neg(self) -> "IntExpr":
         return IntExpr(AlgebraNode(IntSort(), AlgebraOp.NEG, self._node))
 
     # Comparison operators
     def _lt(self, other: "Expr | int") -> "BoolExpr":
-        other_node = coerce_int_node(other)
-        return BoolExpr(AlgebraNode(BoolSort(), AlgebraOp.LT, self._node, other_node))
+        return self._comparison_operation(AlgebraOp.LT, other)
 
     def _le(self, other: "Expr | int") -> "BoolExpr":
-        other_node = coerce_int_node(other)
-        return BoolExpr(AlgebraNode(BoolSort(), AlgebraOp.LE, self._node, other_node))
+        return self._comparison_operation(AlgebraOp.LE, other)
 
     def _gt(self, other: "Expr | int") -> "BoolExpr":
-        other_node = coerce_int_node(other)
-        return BoolExpr(AlgebraNode(BoolSort(), AlgebraOp.GT, self._node, other_node))
+        return self._comparison_operation(AlgebraOp.GT, other)
 
     def _ge(self, other: "Expr | int") -> "BoolExpr":
-        other_node = coerce_int_node(other)
-        return BoolExpr(AlgebraNode(BoolSort(), AlgebraOp.GE, self._node, other_node))
+        return self._comparison_operation(AlgebraOp.GE, other)
 
 
 # =============================================================================
@@ -1244,51 +1102,23 @@ class IntExpr(Expr):
 class BoolExpr(Expr):
     """Boolean expression with logical operators."""
 
-    def __init__(self, node: Node):
-        super().__init__(node)
-
-    def __dir__(self):
+    def __dir__(self) -> list[str]:
         """Provide explicit list of attributes for better tab completion in IPython."""
-        return [
-            # Methods
+        return _Completion.names(
             "and_",
             "if_",
             "implies",
             "in_",
             "not_",
             "or_",
-            # Inherited from object
-            "__class__",
-            "__delattr__",
-            "__dict__",
-            "__dir__",
-            "__doc__",
-            "__eq__",
-            "__format__",
-            "__ge__",
-            "__getattribute__",
-            "__gt__",
-            "__hash__",
-            "__init__",
-            "__init_subclass__",
-            "__le__",
-            "__lt__",
-            "__ne__",
-            "__new__",
-            "__reduce__",
-            "__reduce_ex__",
-            "__repr__",
-            "__setattr__",
-            "__sizeof__",
-            "__str__",
-            "__subclasshook__",
-            # Logical operators
-            "__and__",
-            "__rand__",
-            "__or__",
-            "__ror__",
-            "__invert__",
-        ]
+            operators=(
+                "__and__",
+                "__rand__",
+                "__or__",
+                "__ror__",
+                "__invert__",
+            ),
+        )
 
     @property
     def value(self) -> bool:
@@ -1328,23 +1158,24 @@ class BoolExpr(Expr):
     def __invert__(self) -> "BoolExpr":
         return self._invert()
 
+    def _flattened_operation(
+        self, operation: AlgebraOp, others: tuple["Expr | bool", ...]
+    ) -> "BoolExpr":
+        """Build a variadic Boolean operation, extending an existing one."""
+        new_nodes = [coerce_bool_node(other) for other in others]
+        if isinstance(self._node, AlgebraNode) and self._node.op == operation:
+            nodes = [*self._node.args, *new_nodes]
+        else:
+            nodes = [self._node, *new_nodes]
+        return BoolExpr(AlgebraNode(BoolSort(), operation, *nodes))
+
     def and_(self, *others: "Expr | bool") -> "BoolExpr":
         """Logical AND: self ∧ others. Flattens nested ANDs."""
-        # Flatten: if self is already an AND, extend its args
-        if isinstance(self._node, AlgebraNode) and self._node.op == AlgebraOp.AND:
-            nodes = list(self._node.args) + [coerce_bool_node(o) for o in others]
-        else:
-            nodes = [self._node] + [coerce_bool_node(o) for o in others]
-        return BoolExpr(AlgebraNode(BoolSort(), AlgebraOp.AND, *nodes))
+        return self._flattened_operation(AlgebraOp.AND, others)
 
     def or_(self, *others: "Expr | bool") -> "BoolExpr":
         """Logical OR: self ∨ others. Flattens nested ORs."""
-        # Flatten: if self is already an OR, extend its args
-        if isinstance(self._node, AlgebraNode) and self._node.op == AlgebraOp.OR:
-            nodes = list(self._node.args) + [coerce_bool_node(o) for o in others]
-        else:
-            nodes = [self._node] + [coerce_bool_node(o) for o in others]
-        return BoolExpr(AlgebraNode(BoolSort(), AlgebraOp.OR, *nodes))
+        return self._flattened_operation(AlgebraOp.OR, others)
 
     def not_(self) -> "BoolExpr":
         """Logical NOT: ¬self."""
@@ -1382,51 +1213,23 @@ class TemporalExpr(Expr):
     You can still call the postfix methods directly if you want to.
     """
 
-    def __init__(self, node: Node):
-        super().__init__(node)
-
-    def __dir__(self):
+    def __dir__(self) -> list[str]:
         """Provide explicit list of attributes for better tab completion in IPython."""
-        return [
-            # Methods
+        return _Completion.names(
             "and_",
             "if_",
             "implies",
             "in_",
             "not_",
             "or_",
-            # Inherited from object
-            "__class__",
-            "__delattr__",
-            "__dict__",
-            "__dir__",
-            "__doc__",
-            "__eq__",
-            "__format__",
-            "__ge__",
-            "__getattribute__",
-            "__gt__",
-            "__hash__",
-            "__init__",
-            "__init_subclass__",
-            "__le__",
-            "__lt__",
-            "__ne__",
-            "__new__",
-            "__reduce__",
-            "__reduce_ex__",
-            "__repr__",
-            "__setattr__",
-            "__sizeof__",
-            "__str__",
-            "__subclasshook__",
-            # Logical operators
-            "__and__",
-            "__rand__",
-            "__or__",
-            "__ror__",
-            "__invert__",
-        ]
+            operators=(
+                "__and__",
+                "__rand__",
+                "__or__",
+                "__ror__",
+                "__invert__",
+            ),
+        )
 
     @property
     def value(self) -> bool:
@@ -1480,8 +1283,10 @@ class TemporalExpr(Expr):
     def __invert__(self) -> "TemporalExpr":
         return self._invert()
 
-    def and_(self, other: Expr | bool) -> "TemporalExpr":
-        """Logical AND: self ∧ other."""
+    def _lifted_operation(
+        self, operation: AlgebraOp, other: Expr | bool
+    ) -> "TemporalExpr":
+        """Build a temporal operation after lifting Boolean operands."""
         other_node: Node
         if isinstance(other, bool):
             other_node = ToTemporalNode(LitNode(other))
@@ -1489,20 +1294,16 @@ class TemporalExpr(Expr):
             other_node = self._lift_to_temporal(other._node)
         self_node = self._lift_to_temporal(self._node)
         return TemporalExpr(
-            AlgebraNode(TemporalSort(), AlgebraOp.AND, self_node, other_node)
+            AlgebraNode(TemporalSort(), operation, self_node, other_node)
         )
+
+    def and_(self, other: Expr | bool) -> "TemporalExpr":
+        """Logical AND: self ∧ other."""
+        return self._lifted_operation(AlgebraOp.AND, other)
 
     def or_(self, other: Expr | bool) -> "TemporalExpr":
         """Logical OR: self ∨ other."""
-        other_node: Node
-        if isinstance(other, bool):
-            other_node = ToTemporalNode(LitNode(other))
-        else:
-            other_node = self._lift_to_temporal(other._node)
-        self_node = self._lift_to_temporal(self._node)
-        return TemporalExpr(
-            AlgebraNode(TemporalSort(), AlgebraOp.OR, self_node, other_node)
-        )
+        return self._lifted_operation(AlgebraOp.OR, other)
 
     def not_(self) -> "TemporalExpr":
         """Logical NOT: ¬self."""
@@ -1511,15 +1312,7 @@ class TemporalExpr(Expr):
 
     def implies(self, other: Expr | bool) -> "TemporalExpr":
         """Logical implication: self → other."""
-        other_node: Node
-        if isinstance(other, bool):
-            other_node = ToTemporalNode(LitNode(other))
-        else:
-            other_node = self._lift_to_temporal(other._node)
-        self_node = self._lift_to_temporal(self._node)
-        return TemporalExpr(
-            AlgebraNode(TemporalSort(), AlgebraOp.IMPLIES, self_node, other_node)
-        )
+        return self._lifted_operation(AlgebraOp.IMPLIES, other)
 
     def eventually(self) -> "TemporalExpr":
         """Eventually operator: ◇self."""
@@ -1542,9 +1335,6 @@ class TemporalExpr(Expr):
 class StrExpr(Expr):
     """String expression."""
 
-    def __init__(self, node: Node):
-        super().__init__(node)
-
 
 # =============================================================================
 # Enum expressions
@@ -1553,9 +1343,6 @@ class StrExpr(Expr):
 
 class EnumExpr(Expr):
     """Enum expression for user-defined enum types."""
-
-    def __init__(self, node: Node):
-        super().__init__(node)
 
     @property
     def enum_type(self) -> Type:
@@ -1612,7 +1399,7 @@ class TupleExpr(Expr):
         Returns a new TupleExpr with the update applied.
 
         Example:
-            new_pair = pair.replace(0, IntVal(99))
+            new_pair = pair.replace(0, Val(99))
         """
         if not isinstance(value, Expr):
             assert isinstance(self.node.sort, TupleSort)
@@ -1628,9 +1415,6 @@ class TupleExpr(Expr):
 
 class RecordExpr(Expr):
     """Record expression with field access and update operations."""
-
-    def __init__(self, node: Node):
-        super().__init__(node)
 
     def _getitem(self, field_name: str) -> "Expr":
         """Field access: self[field_name] or self.field_name."""
@@ -1655,7 +1439,7 @@ class RecordExpr(Expr):
         Returns a new RecordExpr with the updates applied.
 
         Example:
-            new_person = person.replace(age=IntVal(31), active=BoolVal(False))
+            new_person = person.replace(age=Val(31), active=Val(False))
         """
         record_sort = self._node.sort
         assert isinstance(record_sort, RecordSort)
@@ -1682,14 +1466,12 @@ class SetExpr(Expr):
         ), f"Expected SetSort, got {type(node.sort).__name__}"
         super().__init__(node)
 
-    def __dir__(self):
+    def __dir__(self) -> list[str]:
         """Provide explicit list of attributes for better tab completion in IPython."""
-        return [
-            # Properties
+        return _Completion.names(
             "flattened",
             "is_empty",
             "size",
-            # Methods
             "choose",
             "contains",
             "difference",
@@ -1702,36 +1484,8 @@ class SetExpr(Expr):
             "map",
             "reduce",
             "union",
-            # Inherited from object
-            "__class__",
-            "__delattr__",
-            "__dict__",
-            "__dir__",
-            "__doc__",
-            "__eq__",
-            "__format__",
-            "__ge__",
-            "__getattribute__",
-            "__gt__",
-            "__hash__",
-            "__init__",
-            "__init_subclass__",
-            "__le__",
-            "__lt__",
-            "__ne__",
-            "__new__",
-            "__reduce__",
-            "__reduce_ex__",
-            "__repr__",
-            "__setattr__",
-            "__sizeof__",
-            "__str__",
-            "__subclasshook__",
-            # Operators
-            "__and__",
-            "__or__",
-            "__sub__",
-        ]
+            operators=("__and__", "__or__", "__sub__"),
+        )
 
     @property
     def elem_sort(self) -> Sort:
@@ -1743,26 +1497,22 @@ class SetExpr(Expr):
         elem_expr = coerce_expr(elem, self.elem_sort)
         return BoolExpr(InNode(elem_expr.node, self.node))
 
+    def _set_algebra(self, operation: AlgebraOp, other: "Expr") -> "SetExpr":
+        """Build a binary set operation after validating element sorts."""
+        self._check_elem_sort(other)
+        return SetExpr(AlgebraNode(self.node.sort, operation, self.node, other.node))
+
     def union(self, other: "Expr") -> "SetExpr":
         """Set union: self ∪ other."""
-        self._check_elem_sort(other)
-        return SetExpr(
-            AlgebraNode(self.node.sort, AlgebraOp.UNION, self.node, other.node)
-        )
+        return self._set_algebra(AlgebraOp.UNION, other)
 
     def intersect(self, other: "Expr") -> "SetExpr":
         """Set intersection: self ∩ other."""
-        self._check_elem_sort(other)
-        return SetExpr(
-            AlgebraNode(self.node.sort, AlgebraOp.INTERSECT, self.node, other.node)
-        )
+        return self._set_algebra(AlgebraOp.INTERSECT, other)
 
     def difference(self, other: "Expr") -> "SetExpr":
         r"""Set difference: self \ other."""
-        self._check_elem_sort(other)
-        return SetExpr(
-            AlgebraNode(self.node.sort, AlgebraOp.DIFFERENCE, self.node, other.node)
-        )
+        return self._set_algebra(AlgebraOp.DIFFERENCE, other)
 
     def issubset(self, other: "Expr") -> "BoolExpr":
         """Subset or equal: self ⊆ other."""
@@ -1803,14 +1553,7 @@ class SetExpr(Expr):
 
     def filter(self, predicate: Callable[["Expr"], "Expr"]) -> "SetExpr":
         """Filter set: { x ∈ self : P(x) }."""
-        var = self._callable_var(predicate, self.elem_sort)
-        var_node = var.node
-        if not isinstance(var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(var_node).__name__}")
-        if var.sort != self.elem_sort:
-            raise TypeError(
-                f"Variable sort {var.sort} does not match set element sort {self.elem_sort}"
-            )
+        var, var_node = _Binders.fresh_unary(predicate, self.elem_sort)
         pred_expr = predicate(var)
         return SetExpr(
             SetFilterNode(
@@ -1822,10 +1565,7 @@ class SetExpr(Expr):
 
     def map(self, mapper: Callable[["Expr"], "Expr"]) -> "SetExpr":
         """Map over set: { f(x) : x ∈ self }."""
-        var = self._callable_var(mapper, self.elem_sort)
-        var_node = var.node
-        if not isinstance(var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(var_node).__name__}")
+        var, var_node = _Binders.fresh_unary(mapper, self.elem_sort)
         mapped_expr = mapper(var)
         return SetExpr(
             SetMapNode(
@@ -1837,10 +1577,7 @@ class SetExpr(Expr):
 
     def map_to(self, mapper: Callable[["Expr"], "Expr"]) -> "MapExpr":
         """Create a map: [ x ∈ self |-> mapper ]."""
-        var = self._callable_var(mapper, self.elem_sort)
-        var_node = var.node
-        if not isinstance(var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(var_node).__name__}")
+        var, var_node = _Binders.fresh_unary(mapper, self.elem_sort)
         mapped_expr = mapper(var)
         if not isinstance(mapped_expr, Expr):
             mapped_expr = coerce_expr(mapped_expr)
@@ -1862,26 +1599,7 @@ class SetExpr(Expr):
 
     def forall(self, predicate: Callable) -> "Expr":
         """Universal quantification: ∀x ∈ self : P(x)."""
-        var = self._callable_var(predicate, self.elem_sort)
-        var_node = var.node
-        if not isinstance(var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(var_node).__name__}")
-        pred_expr = predicate(var)
-        quant_node = SetQuantNode(
-            QuantOp.FORALL,
-            self.node,
-            var_node,
-            pred_expr.node,
-        )
-        match pred_expr.sort:
-            case BoolSort():
-                return BoolExpr(quant_node)
-            case TemporalSort():
-                return TemporalExpr(quant_node)
-            case _:
-                raise TypeError(
-                    f"Predicate must return BoolExpr or TemporalExpr, got {pred_expr.sort}"
-                )
+        return self._quantify(QuantOp.FORALL, predicate)
 
     @overload
     def exists(self, predicate: Callable[["Expr"], "BoolExpr"]) -> "BoolExpr": ...
@@ -1893,13 +1611,14 @@ class SetExpr(Expr):
 
     def exists(self, predicate: Callable) -> "Expr":
         """Existential quantification: ∃x ∈ self : P(x)."""
-        var = self._callable_var(predicate, self.elem_sort)
-        var_node = var.node
-        if not isinstance(var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(var_node).__name__}")
+        return self._quantify(QuantOp.EXISTS, predicate)
+
+    def _quantify(self, operation: QuantOp, predicate: Callable[..., Any]) -> "Expr":
+        """Build a set quantifier and wrap it according to the predicate sort."""
+        var, var_node = _Binders.fresh_unary(predicate, self.elem_sort)
         pred_expr = predicate(var)
         quant_node = SetQuantNode(
-            QuantOp.EXISTS,
+            operation,
             self.node,
             var_node,
             pred_expr.node,
@@ -1926,24 +1645,15 @@ class SetExpr(Expr):
         """
 
         initial = coerce_expr(initial)
-        params = inspect.signature(function).parameters
-        if len(params) != 2:
-            raise ValueError(
-                "Callable must take exactly two arguments (accumulator, element)"
-            )
-
-        # unpack params into accumulator and element
-        param_iter = iter(params)
-        acc_name = next(param_iter)
-        elem_name = next(param_iter)
-        acc_var = VarExpr(acc_name, initial.sort, unique_name=fresh_name(acc_name))
-        elem_var = VarExpr(elem_name, self.elem_sort, unique_name=fresh_name(elem_name))
-        acc_var_node = acc_var.node
-        elem_var_node = elem_var.node
-        if not isinstance(acc_var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(acc_var_node).__name__}")
-        if not isinstance(elem_var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(elem_var_node).__name__}")
+        acc_name, elem_name = _Binders.parameter_names(
+            function,
+            2,
+            "Callable must take exactly two arguments (accumulator, element)",
+        )
+        acc_var, acc_var_node = _Binders.fresh_named_variable(acc_name, initial.sort)
+        elem_var, elem_var_node = _Binders.fresh_named_variable(
+            elem_name, self.elem_sort
+        )
         fun_node = function(acc_var, elem_var).node
 
         return expr_from_node(
@@ -1971,10 +1681,7 @@ class SetExpr(Expr):
 
     def choose(self, predicate: Callable[["Expr"], "BoolExpr"]) -> "Expr":
         """Choose an element: CHOOSE x ∈ self : P(x)."""
-        var = self._callable_var(predicate, self.elem_sort)
-        var_node = var.node
-        if not isinstance(var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(var_node).__name__}")
+        var, var_node = _Binders.fresh_unary(predicate, self.elem_sort)
         pred_expr = predicate(var)
         node = ChooseNode(
             self.node,
@@ -1982,18 +1689,6 @@ class SetExpr(Expr):
             pred_expr.node,
         )
         return expr_from_node(node)
-
-    def _callable_first_name(self, callable: Callable[["Expr"], Any]) -> str:
-        """Extract the first parameter name from a callable."""
-        params = inspect.signature(callable).parameters
-        if len(params) != 1:
-            raise ValueError("Callable must take exactly one argument")
-        return next(iter(params))
-
-    def _callable_var(self, callable: Callable[["Expr"], Any], sort: Sort) -> "VarExpr":
-        """Create a binder variable with stable display name and unique identity."""
-        name = self._callable_first_name(callable)
-        return VarExpr(name, sort, unique_name=fresh_name(name))
 
     def _check_elem_sort(self, other: "Expr") -> None:
         """Check that both sets have the same element sort."""
@@ -2020,14 +1715,12 @@ class ListExpr(Expr):
         ), f"Expected ListSort, got {type(node.sort).__name__}"
         super().__init__(node)
 
-    def __dir__(self):
+    def __dir__(self) -> list[str]:
         """Provide explicit list of attributes for better tab completion in IPython."""
-        return [
-            # Properties
+        return _Completion.names(
             "is_empty",
             "keys",
             "size",
-            # Methods
             "exists",
             "filter",
             "forall",
@@ -2035,35 +1728,8 @@ class ListExpr(Expr):
             "in_",
             "reduce",
             "replace",
-            # Inherited from object
-            "__class__",
-            "__delattr__",
-            "__dict__",
-            "__dir__",
-            "__doc__",
-            "__eq__",
-            "__format__",
-            "__ge__",
-            "__getattribute__",
-            "__gt__",
-            "__hash__",
-            "__init__",
-            "__init_subclass__",
-            "__le__",
-            "__lt__",
-            "__ne__",
-            "__new__",
-            "__reduce__",
-            "__reduce_ex__",
-            "__repr__",
-            "__setattr__",
-            "__sizeof__",
-            "__str__",
-            "__subclasshook__",
-            # Operators
-            "__add__",
-            "__getitem__",
-        ]
+            operators=("__add__", "__getitem__"),
+        )
 
     @property
     def elem_sort(self) -> Sort:
@@ -2107,10 +1773,7 @@ class ListExpr(Expr):
 
     def filter(self, predicate: Callable[["Expr"], "Expr"]) -> "ListExpr":
         """Filter list: elements of self for which P(x) holds."""
-        var = self._callable_var(predicate, self.elem_sort)
-        var_node = var.node
-        if not isinstance(var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(var_node).__name__}")
+        var, var_node = _Binders.fresh_unary(predicate, self.elem_sort)
         pred_expr = predicate(var)
         return ListExpr(
             ListFilterNode(
@@ -2132,23 +1795,15 @@ class ListExpr(Expr):
         ``bool``, ``Enum``), which is auto-coerced.
         """
         initial = coerce_expr(initial)
-        params = inspect.signature(function).parameters
-        if len(params) != 2:
-            raise ValueError(
-                "Callable must take exactly two arguments (accumulator, element)"
-            )
-
-        param_iter = iter(params)
-        acc_name = next(param_iter)
-        elem_name = next(param_iter)
-        acc_var = VarExpr(acc_name, initial.sort, unique_name=fresh_name(acc_name))
-        elem_var = VarExpr(elem_name, self.elem_sort, unique_name=fresh_name(elem_name))
-        acc_var_node = acc_var.node
-        elem_var_node = elem_var.node
-        if not isinstance(acc_var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(acc_var_node).__name__}")
-        if not isinstance(elem_var_node, VarNode):
-            raise TypeError(f"Expected VarNode, got {type(elem_var_node).__name__}")
+        acc_name, elem_name = _Binders.parameter_names(
+            function,
+            2,
+            "Callable must take exactly two arguments (accumulator, element)",
+        )
+        acc_var, acc_var_node = _Binders.fresh_named_variable(acc_name, initial.sort)
+        elem_var, elem_var_node = _Binders.fresh_named_variable(
+            elem_name, self.elem_sort
+        )
         fun_node = function(acc_var, elem_var).node
 
         return expr_from_node(
@@ -2180,7 +1835,9 @@ class ListExpr(Expr):
 
         Desugars to ``self.keys.forall(lambda idx: P(self[idx]))``.
         """
-        self._callable_first_name(predicate)  # validate single-argument arity
+        _Binders.parameter_names(
+            predicate, 1, "Callable must take exactly one argument"
+        )
         return cast("Expr", self.keys.forall(lambda idx: predicate(self._getitem(idx))))
 
     @overload
@@ -2196,20 +1853,10 @@ class ListExpr(Expr):
 
         Desugars to ``self.keys.exists(lambda idx: P(self[idx]))``.
         """
-        self._callable_first_name(predicate)  # validate single-argument arity
+        _Binders.parameter_names(
+            predicate, 1, "Callable must take exactly one argument"
+        )
         return cast("Expr", self.keys.exists(lambda idx: predicate(self._getitem(idx))))
-
-    def _callable_first_name(self, callable: Callable[["Expr"], Any]) -> str:
-        """Extract the first parameter name from a callable."""
-        params = inspect.signature(callable).parameters
-        if len(params) != 1:
-            raise ValueError("Callable must take exactly one argument")
-        return next(iter(params))
-
-    def _callable_var(self, callable: Callable[["Expr"], Any], sort: Sort) -> "VarExpr":
-        """Create a binder variable with stable display name and unique identity."""
-        name = self._callable_first_name(callable)
-        return VarExpr(name, sort, unique_name=fresh_name(name))
 
 
 # =============================================================================
@@ -2249,7 +1896,7 @@ class MapExpr(Expr):
         Returns a new MapExpr with the updates on top of the old one.
 
         Example:
-            new_map = balances.insert(account_id, Lit(1000))
+            new_map = balances.insert(account_id, Val(1000))
         """
         if not isinstance(key, Expr):
             key = coerce_expr(key, self.key_sort)
@@ -2267,7 +1914,7 @@ class MapExpr(Expr):
         Returns a new MapExpr with the updates on top of the old one.
 
         Example:
-            new_map = balances.replace(account_id, Lit(1000))
+            new_map = balances.replace(account_id, Val(1000))
         """
         if not isinstance(key, Expr):
             key = coerce_expr(key, self.key_sort)
@@ -2285,7 +1932,7 @@ class MapExpr(Expr):
         """Return the set of keys in this map.
 
         Example:
-            account_ids = balances.keys()
+            account_ids = balances.keys
         """
         return SetExpr(MapKeysNode(self.node))
 
@@ -2330,12 +1977,11 @@ class MapExpr(Expr):
         Example:
             total = balances.reduce(lambda acc, k, v: acc + v, 0)
         """
-        params = inspect.signature(function).parameters
-        if len(params) != 3:
-            raise ValueError(
-                "Callable must take exactly three arguments "
-                "(accumulator, key, value)"
-            )
+        _Binders.parameter_names(
+            function,
+            3,
+            "Callable must take exactly three arguments (accumulator, key, value)",
+        )
         return self.keys.reduce(
             lambda acc, k: function(acc, k, self._getitem(k)), initial
         )
@@ -2358,6 +2004,83 @@ class UnionExpr(Expr):
     def tag(self) -> "StrExpr":
         """Access the tag as a string expression."""
         return StrExpr(UnionGetTagNode(self._node))
+
+    @staticmethod
+    def _missing_match_tags(
+        union_sort: UnionSort,
+        case_tags: set[str],
+        has_default: bool,
+    ) -> set[str]:
+        """Validate supplied tags and return the variants still needing cases."""
+        variant_tags = {tag for tag, _ in union_sort.variants}
+        extra_tags = case_tags - variant_tags
+        if extra_tags:
+            raise ValueError(
+                f"Unknown variants in match: {', '.join(sorted(extra_tags))}"
+            )
+
+        missing_tags = variant_tags - case_tags
+        if missing_tags and not has_default:
+            raise ValueError(
+                "Non-exhaustive match: missing cases for "
+                f"{', '.join(sorted(missing_tags))}"
+            )
+        return missing_tags
+
+    @staticmethod
+    def _default_match_body(default: Any) -> Node | None:
+        """Coerce a default value or invoke its zero-argument callback."""
+        if default is None:
+            return None
+        if callable(default):
+            _Binders.parameter_names(
+                default, 0, "default callback must take 0 arguments"
+            )
+            default = default()
+        return coerce_expr(default)._node
+
+    @staticmethod
+    def _build_match_case(
+        tag: str,
+        function: Callable[..., Any],
+        payload_sort: Sort | None,
+    ) -> tuple[VarNode | None, Node]:
+        """Invoke and normalize one match callback."""
+        if payload_sort is not None:
+            (parameter_name,) = _Binders.parameter_names(
+                function,
+                1,
+                f"Case '{tag}' has a payload of sort {payload_sort.name}, "
+                "callback must take exactly 1 argument",
+            )
+            variable = VarExpr(parameter_name, payload_sort)
+            body = function(variable)
+            body_expr = body if isinstance(body, Expr) else coerce_expr(body)
+            return VarNode(parameter_name, payload_sort), body_expr._node
+
+        _Binders.parameter_names(
+            function,
+            0,
+            f"Case '{tag}' has no payload, callback must take 0 arguments",
+        )
+        body = function()
+        body_expr = body if isinstance(body, Expr) else coerce_expr(body)
+        return None, body_expr._node
+
+    @staticmethod
+    def _add_default_match_cases(
+        built_cases: dict[str, tuple[VarNode | None, Node]],
+        missing_tags: set[str],
+        union_sort: UnionSort,
+        default_body: Node | None,
+    ) -> None:
+        """Expand a default body into explicit cases required by the AST."""
+        if default_body is None:
+            return
+        for tag in missing_tags:
+            payload_sort = union_sort[tag]
+            variable = VarNode("_", payload_sort) if payload_sort is not None else None
+            built_cases[tag] = variable, default_body
 
     def match(
         self,
@@ -2402,80 +2125,17 @@ class UnionExpr(Expr):
             ```
         """
         union_sort: UnionSort = self._node.sort  # type: ignore[assignment]
-
-        variant_tags = set(tag for tag, _ in union_sort.variants)
-        case_tags = set(cases.keys())
-
-        # Check for unknown variants
-        extra = case_tags - variant_tags
-        if extra:
-            raise ValueError(f"Unknown variants in match: {', '.join(sorted(extra))}")
-
-        # Check exhaustiveness (only if no default)
-        missing = variant_tags - case_tags
-        if missing and default is None:
-            raise ValueError(
-                f"Non-exhaustive match: missing cases for {', '.join(sorted(missing))}"
-            )
-
-        # Build the default body node if provided
-        default_body_node: Node | None = None
-        if default is not None:
-            if callable(default):
-                params = inspect.signature(default).parameters
-                if len(params) != 0:
-                    raise ValueError("default callback must take 0 arguments")
-                default_body = default()
-                if not isinstance(default_body, Expr):
-                    default_body = coerce_expr(default_body)
-                default_body_node = default_body._node
-            else:
-                default_expr = coerce_expr(default)
-                default_body_node = default_expr._node
+        missing_tags = self._missing_match_tags(
+            union_sort, set(cases), default is not None
+        )
+        default_body = self._default_match_body(default)
 
         built_cases: dict[str, tuple[VarNode | None, Node]] = {}
-
-        for tag, func in cases.items():
-            payload_sort = union_sort[tag]
-            if payload_sort is not None:
-                # Variant with payload - extract parameter name
-                params = inspect.signature(func).parameters
-                if len(params) != 1:
-                    raise ValueError(
-                        f"Case '{tag}' has a payload of sort {payload_sort.name}, "
-                        f"callback must take exactly 1 argument"
-                    )
-                param_name = next(iter(params))
-                var = VarExpr(param_name, payload_sort)
-                body_expr = func(var)
-                if not isinstance(body_expr, Expr):
-                    body_expr = coerce_expr(body_expr)
-                var_node = VarNode(param_name, payload_sort)
-                built_cases[tag] = (var_node, body_expr._node)
-            else:
-                # Variant without payload
-                params = inspect.signature(func).parameters
-                if len(params) != 0:
-                    raise ValueError(
-                        f"Case '{tag}' has no payload, "
-                        f"callback must take 0 arguments"
-                    )
-                body_expr = func()
-                if not isinstance(body_expr, Expr):
-                    body_expr = coerce_expr(body_expr)
-                built_cases[tag] = (None, body_expr._node)
-
-        # Fill in missing cases with default
-        if default_body_node is not None:
-            for tag in missing:
-                payload_sort = union_sort[tag]
-                if payload_sort is not None:
-                    # Variant has payload - provide a dummy variable (unused)
-                    dummy_var = VarNode("_", payload_sort)
-                    built_cases[tag] = (dummy_var, default_body_node)
-                else:
-                    # No payload variant
-                    built_cases[tag] = (None, default_body_node)
+        for tag, function in cases.items():
+            built_cases[tag] = self._build_match_case(tag, function, union_sort[tag])
+        self._add_default_match_cases(
+            built_cases, missing_tags, union_sort, default_body
+        )
 
         match_node = UnionMatchNode(self._node, built_cases)
         return expr_from_node(match_node)
@@ -2557,8 +2217,7 @@ class VarExpr(Expr):
             EnumSort(MyEnum)
     """
 
-    # map the sort types to their corresponding expression base classes
-    SORT_TO_EXPR_BASE: dict[type, type] = {
+    SORT_TO_EXPR_BASE: dict[type, type[Expr]] = {
         IntSort: IntExpr,
         BoolSort: BoolExpr,
         StrSort: StrExpr,
@@ -2572,7 +2231,7 @@ class VarExpr(Expr):
     }
 
     # cache for dynamically created variable classes
-    _CLASS_CACHE: dict[tuple[type, type], type] = {}
+    _CLASS_CACHE: dict[tuple[type[Expr], type], type[Expr]] = {}
 
     _node: Any
     _name: str
@@ -2605,13 +2264,9 @@ class VarExpr(Expr):
                 cls_name,
                 (base,),
                 {
-                    "name": property(lambda self: self._name),
-                    "unique_name": property(
-                        lambda self: getattr(self._node, "unique_name", None)
-                    ),
-                    "tla_name": property(
-                        lambda self: getattr(self._node, "tla_name", None)
-                    ),
+                    "name": property(_VariableMetadata.name),
+                    "unique_name": property(_VariableMetadata.unique_name),
+                    "tla_name": property(_VariableMetadata.tla_name),
                 },
             )
             VarExpr._CLASS_CACHE[key] = var_cls
@@ -2619,14 +2274,37 @@ class VarExpr(Expr):
         obj = super().__new__(var_cls)  # type: ignore
         obj._node = VarNode(name, sort, unique_name=unique_name, tla_name=tla_name)
         obj._name = name
-        for k, v in extra.items():
-            setattr(obj, f"_{k}", v)
+        for extra_name, extra_value in extra.items():
+            setattr(obj, f"_{extra_name}", extra_value)
         return obj  # type: ignore
 
 
 # =============================================================================
-# Updates builder
+# Expression builders
 # =============================================================================
+
+
+class _ConditionalBuilder:
+    """Build a conditional expression after its condition and true branch."""
+
+    def __init__(self, condition: "BoolExpr", then_expr: "Expr"):
+        self.condition = condition
+        self.then_expr = then_expr
+
+    def else_(self, else_expr: "Expr | int | str | bool | Enum") -> "Expr":
+        """Complete the if-then-else expression.
+
+        The else branch may be an ``Expr`` or a raw Python literal (``int``,
+        ``str``, ``bool``, ``Enum``), which is auto-coerced to the sort of the
+        then branch. A mismatched sort raises ``TypeError``.
+        """
+        else_coerced = coerce_expr(else_expr, self.then_expr._node.sort)
+        node = IteNode(self.condition._node, self.then_expr._node, else_coerced._node)
+        return expr_from_node(node)
+
+
+_UpdateAlias = tuple[VarNode, Node]
+_UpdateParent = tuple[Node, Expr]
 
 
 class UpdateContext:
@@ -2652,13 +2330,11 @@ class UpdateContext:
             case RecordSort():
                 if isinstance(key, LitNode) and isinstance(key.value, str):
                     return RecordGetNode(base, key.value)  # type: ignore
-                else:
-                    raise TypeError("Record field key must be a string literal")
+                raise TypeError("Record field key must be a string literal")
             case TupleSort():
                 if isinstance(key, LitNode) and isinstance(key.value, int):
                     return TupleGetNode(base, key.value)  # type: ignore
-                else:
-                    raise TypeError("Tuple index key must be an integer literal")
+                raise TypeError("Tuple index key must be an integer literal")
             case ListSort():
                 return ListGetNode(base, key)
             case _:
@@ -2671,60 +2347,62 @@ class UpdateContext:
             case RecordSort():
                 if isinstance(key, LitNode) and isinstance(key.value, str):
                     return RecordUpdateNode(base, **{key.value: value})  # type: ignore
-                else:
-                    raise TypeError("Record field key must be a string literal")
+                raise TypeError("Record field key must be a string literal")
             case TupleSort():
                 if isinstance(key, LitNode) and isinstance(key.value, int):
                     return TupleUpdateNode(base, key.value, value)  # type: ignore
-                else:
-                    raise TypeError("Tuple index key must be an integer literal")
+                raise TypeError("Tuple index key must be an integer literal")
             case ListSort():
                 return ListUpdateNode(base, key, value)
             case _:
                 raise TypeError(f"Unsupported sort for set operation: {base.sort}")
 
-    def update(self, key_path: tuple[Expr, ...], new_value: Expr) -> None:
-        """Apply an update at the specified key path with the new value."""
-        # Consider this example: m[2][3][4] = 5
-        # First, go over the key path and introduce aliases,
-        # e.g., _m0 for m, _m1 for MapGet(m0, (2)) and _m2 for MapGet(_m1, (3)), etc.
-        # Create a temporary variable for the target expression, as it may be large.
-        # VarNode is already a single identifier — aliasing it is a no-op.
+    def _walk_to_update_parent(
+        self, path_prefix: tuple[Expr, ...]
+    ) -> tuple[list[_UpdateAlias], list[_UpdateParent], Node]:
+        """Alias the root and path prefix, returning the final update parent."""
         if isinstance(self.updated_node, VarNode):
             aliases: list[tuple[VarNode, Node]] = []
-            last_node: Node = self.updated_node
+            current_node: Node = self.updated_node
         else:
-            initial_var = VarNode(self._fresh_var_name(), self.updated_node.sort)
-            aliases = [(initial_var, self.updated_node)]
-            last_node = initial_var
-        update_targets = []
-        for key in key_path[:-1]:
-            # Build the get node for the current key
-            get_node = self._mk_get_node(last_node, key.node)
-            # Create a fresh variable for the intermediate map
-            next_var: VarNode = VarNode(self._fresh_var_name(), get_node.sort)  # type: ignore[assignment]
-            aliases.append((next_var, get_node))
-            update_targets.append((last_node, key))
-            last_node = next_var
+            root_alias = VarNode(self._fresh_var_name(), self.updated_node.sort)
+            aliases = [(root_alias, self.updated_node)]
+            current_node = root_alias
 
-        # Build an update for the last key: last_node = MapSet(_m2, (4), (5))
-        key = key_path[-1]
-        last_node = self._mk_set_node(last_node, key.node, new_value._node)
+        parents: list[_UpdateParent] = []
+        for key in path_prefix:
+            child_node = self._mk_get_node(current_node, key.node)
+            child_alias = VarNode(self._fresh_var_name(), child_node.sort)
+            aliases.append((child_alias, child_node))
+            parents.append((current_node, key))
+            current_node = child_alias
 
-        # Second, go backwards and accumulate the updates,
-        # e.g., MapSet(m, (2), MapSet(_m1, (3), MapSet(_m2, (4), (5))))
-        for prev_node, key in reversed(update_targets):
-            last_node = self._mk_set_node(prev_node, key.node, last_node)
+        return aliases, parents, current_node
 
-        # Third, simply wrap `last_node` with Let-nodes for all the aliases
-        # e.g., Let(_m1, MapGet(m, (2)), Let(_m2, MapGet(_m1, (3)), ...))
-        for var_node, get_node in reversed(aliases):
-            last_node = LetNode(var_node.name, get_node, last_node)
+    def _rebuild_update_parents(
+        self, updated_child: Node, parents: list[_UpdateParent]
+    ) -> Node:
+        """Reinsert an updated child through all enclosing collection nodes."""
+        updated_node = updated_child
+        for parent_node, key in reversed(parents):
+            updated_node = self._mk_set_node(parent_node, key.node, updated_node)
+        return updated_node
 
-        # Update the current node, so the next assignment builds on top of
-        # this one
-        self.updated_node = last_node
-        # Trigger the callback that may result in actual assignment
+    @staticmethod
+    def _wrap_update_aliases(updated_node: Node, aliases: list[_UpdateAlias]) -> Node:
+        """Bind path aliases around a rebuilt update expression."""
+        for variable, aliased_node in reversed(aliases):
+            updated_node = LetNode(variable.name, aliased_node, updated_node)
+        return updated_node
+
+    def update(self, key_path: tuple[Expr, ...], new_value: Expr) -> None:
+        """Apply an update at the specified key path with the new value."""
+        aliases, parents, update_parent = self._walk_to_update_parent(key_path[:-1])
+        final_key = key_path[-1]
+        updated_node = self._mk_set_node(update_parent, final_key.node, new_value._node)
+        updated_node = self._rebuild_update_parents(updated_node, parents)
+        self.updated_node = self._wrap_update_aliases(updated_node, aliases)
+
         if self._on_update:
             self._on_update()
 
@@ -2734,21 +2412,31 @@ class UpdateContext:
 
 class UpdatesBuilder(Expr):
     """
-    Helper class to build path updates for maps, records, and tuples.
+    Helper class to build path updates for maps, records, tuples, and lists.
 
     UpdatesBuilder extends `Expr` for coercion to work correctly.
     """
 
+    _INTERNAL_NAMES = frozenset({"_ctx", "_key_path", "_proxied_expr", "_node"})
+
     def __init__(
         self, ctx: UpdateContext, key_path: tuple[Expr, ...], proxied_expr: Expr
-    ):
+    ) -> None:
         Expr.__init__(self, proxied_expr._node)
         self._ctx = ctx
         self._key_path = key_path
         self._proxied_expr = proxied_expr
 
+    def _child_builder(self, key_expr: Expr, proxied_expr: Expr) -> "UpdatesBuilder":
+        """Create a builder for one more segment of the current update path."""
+        return UpdatesBuilder(
+            self._ctx,
+            self._key_path + (key_expr,),
+            proxied_expr,
+        )
+
     def __getattribute__(self, name: str) -> "Expr":
-        if _is_record_field_attribute(name):
+        if _RecordFields.is_field_attribute(name):
             try:
                 proxied = object.__getattribute__(self, "_proxied_expr")
             except AttributeError:
@@ -2756,10 +2444,12 @@ class UpdatesBuilder(Expr):
             else:
                 node = object.__getattribute__(proxied, "_node")
                 if isinstance(node.sort, RecordSort) and name in node.sort:
-                    return UpdatesBuilder(
-                        object.__getattribute__(self, "_ctx"),
-                        object.__getattribute__(self, "_key_path")
-                        + (coerce_expr(name),),
+                    make_child = cast(
+                        Callable[[Expr, Expr], UpdatesBuilder],
+                        object.__getattribute__(self, "_child_builder"),
+                    )
+                    return make_child(
+                        coerce_expr(name),
                         RecordExpr(node)._getitem(name),
                     )
         return cast("Expr", object.__getattribute__(self, name))
@@ -2779,7 +2469,7 @@ class UpdatesBuilder(Expr):
         # convert literals to expressions, unless in the expression form already
         key_expr = coerce_expr(key)  # type: ignore[call-arg]
         item = self._proxied_expr.__getitem__(key_expr)  # type: ignore[call-arg,index]
-        return UpdatesBuilder(self._ctx, self._key_path + (key_expr,), item)
+        return self._child_builder(key_expr, item)
 
     def __setitem__(self, key: Expr | int | bool | str | slice, value: object) -> None:
         """Set the value at the specified path."""
@@ -2808,16 +2498,11 @@ class UpdatesBuilder(Expr):
         ):
             return proxied_attr
 
-        # Otherwise, extend the update path (for record fields)
-        return UpdatesBuilder(
-            object.__getattribute__(self, "_ctx"),
-            object.__getattribute__(self, "_key_path") + (coerce_expr(name),),
-            proxied_attr,
-        )
+        return self._child_builder(coerce_expr(name), proxied_attr)
 
-    def __setattr__(self, name: str, value: object):
+    def __setattr__(self, name: str, value: object) -> None:
         """Set the value at the specified path using attribute syntax (for records)."""
-        if name in ["_ctx", "_key_path", "_proxied_expr", "_node"]:
+        if name in UpdatesBuilder._INTERNAL_NAMES:
             object.__setattr__(self, name, value)
         else:
             # Coerce Python literals to the record field's sort (so
@@ -2830,55 +2515,226 @@ class UpdatesBuilder(Expr):
 
 
 # =============================================================================
-# Helper functions. May change without notice.
+# Internal helper namespaces
+# =============================================================================
+
+
+class _Completion:
+    """Build the intentionally restricted completion lists for expressions."""
+
+    _STANDARD_NAMES = (
+        "__class__",
+        "__delattr__",
+        "__dict__",
+        "__dir__",
+        "__doc__",
+        "__eq__",
+        "__format__",
+        "__ge__",
+        "__getattribute__",
+        "__gt__",
+        "__hash__",
+        "__init__",
+        "__init_subclass__",
+        "__le__",
+        "__lt__",
+        "__ne__",
+        "__new__",
+        "__reduce__",
+        "__reduce_ex__",
+        "__repr__",
+        "__setattr__",
+        "__sizeof__",
+        "__str__",
+        "__subclasshook__",
+    )
+
+    @classmethod
+    def names(cls, *public_names: str, operators: tuple[str, ...] = ()) -> list[str]:
+        return [*public_names, *cls._STANDARD_NAMES, *operators]
+
+
+class _Binders:
+    """Create and validate variables used by expression callbacks."""
+
+    @staticmethod
+    def parameter_names(
+        function: Callable[..., Any],
+        expected_arity: int,
+        error_message: str,
+    ) -> tuple[str, ...]:
+        parameter_names = tuple(inspect.signature(function).parameters)
+        if len(parameter_names) != expected_arity:
+            raise ValueError(error_message)
+        return parameter_names
+
+    @staticmethod
+    def fresh_named_variable(name: str, sort: Sort) -> tuple[Expr, VarNode]:
+        variable = VarExpr(name, sort, unique_name=fresh_name(name))
+        variable_node = variable.node
+        if not isinstance(variable_node, VarNode):
+            raise TypeError(f"Expected VarNode, got {type(variable_node).__name__}")
+        return variable, variable_node
+
+    @staticmethod
+    def fresh_unary(function: Callable[..., Any], sort: Sort) -> tuple[Expr, VarNode]:
+        (name,) = _Binders.parameter_names(
+            function, 1, "Callable must take exactly one argument"
+        )
+        return _Binders.fresh_named_variable(name, sort)
+
+
+class _GeneratorContext:
+    """Track variable bindings while consuming a symbolic generator."""
+
+    def __init__(self, names: tuple[str, ...] | None = None) -> None:
+        self.bindings: list[tuple[Expr, Expr]] = []
+        self.names = names
+
+    def var(self, default_prefix: str, sort: Sort) -> VarExpr:
+        index = len(self.bindings)
+        if self.names is None:
+            return VarExpr(fresh_name(default_prefix), sort)
+        if index >= len(self.names):
+            raise ValueError(
+                f"name has {len(self.names)} entries, but the generator has more bindings"
+            )
+        name = self.names[index]
+        return VarExpr(name, sort, unique_name=fresh_name(name), tla_name=name)
+
+
+class _GeneratorLocal(threading.local):
+    """Hold each thread's stack of active symbolic generator contexts."""
+
+    def __init__(self) -> None:
+        self.stack: list[_GeneratorContext] = []
+
+
+class _GeneratorContexts:
+    """Manage nested, thread-local symbolic generator contexts."""
+
+    _local = _GeneratorLocal()
+
+    @classmethod
+    def current(cls) -> _GeneratorContext | None:
+        stack = cls._local.stack
+        return stack[-1] if stack else None
+
+    @classmethod
+    @contextmanager
+    def activate(
+        cls, names: tuple[str, ...] | None = None
+    ) -> Iterator[_GeneratorContext]:
+        if names is not None:
+            active_names = {
+                name
+                for context in cls._local.stack
+                for name in (() if context.names is None else context.names)
+            }
+            duplicate = active_names.intersection(names)
+            if duplicate:
+                names_str = ", ".join(sorted(duplicate))
+                raise ValueError(f"duplicate active generator name(s): {names_str}")
+
+        context = _GeneratorContext(names)
+        cls._local.stack.append(context)
+        try:
+            yield context
+        finally:
+            cls._local.stack.pop()
+
+
+class _RecordFields:
+    """Recognize attributes that may refer to symbolic record fields."""
+
+    @staticmethod
+    def is_field_attribute(name: str) -> bool:
+        return not name.startswith("_") and not (
+            name.startswith("__") and name.endswith("__")
+        )
+
+
+class _ExprOps:
+    """Provide expression operations shadowed by record fields."""
+
+    def __init__(self, expr: Expr):
+        object.__setattr__(self, "_expr", expr)
+
+    @property
+    def node(self) -> Node:
+        expr = cast(Expr, object.__getattribute__(self, "_expr"))
+        return cast(Node, object.__getattribute__(expr, "_node"))
+
+    @property
+    def sort(self) -> Sort:
+        return self.node.sort
+
+    @property
+    def name(self) -> str:
+        node = self.node
+        if isinstance(node, VarNode):
+            return node.name
+        raise AttributeError(f"{type(node).__name__} has no variable name")
+
+    @property
+    def unique_name(self) -> str | None:
+        node = self.node
+        if isinstance(node, VarNode):
+            return node.unique_name
+        raise AttributeError(f"{type(node).__name__} has no unique variable name")
+
+    def __getattr__(self, name: str) -> Any:
+        expr = object.__getattribute__(self, "_expr")
+        return object.__getattribute__(expr, name)
+
+
+class _VariableMetadata:
+    """Read metadata properties installed on dynamic variable classes."""
+
+    @staticmethod
+    def name(expr: Expr) -> str:
+        return cast(str, object.__getattribute__(expr, "_name"))
+
+    @staticmethod
+    def unique_name(expr: Expr) -> str | None:
+        node = cast(Node, object.__getattribute__(expr, "_node"))
+        return getattr(node, "unique_name", None)
+
+    @staticmethod
+    def tla_name(expr: Expr) -> str | None:
+        node = cast(Node, object.__getattribute__(expr, "_node"))
+        return getattr(node, "tla_name", None)
+
+
+# =============================================================================
+# Expression construction and coercion
 # =============================================================================
 
 
 def expr_from_node(node: Node) -> Expr:
     """Wrap a Node in the appropriate Expr type."""
-    sort = node.sort
-    if isinstance(sort, IntSort):
-        return IntExpr(node)
-    elif isinstance(sort, BoolSort):
-        return BoolExpr(node)
-    elif isinstance(sort, StrSort):
-        return StrExpr(node)
-    elif isinstance(sort, EnumSort):
-        return EnumExpr(node)
-    elif isinstance(sort, SetSort):
-        return SetExpr(node)  # type: ignore[arg-type]
-    elif isinstance(sort, ListSort):
-        return ListExpr(node)  # type: ignore[arg-type]
-    elif isinstance(sort, MapSort):
-        return MapExpr(node)  # type: ignore[arg-type]
-    elif isinstance(sort, RecordSort):
-        return RecordExpr(node)  # type: ignore[arg-type]
-    elif isinstance(sort, TupleSort):
-        return TupleExpr(node)  # type: ignore[arg-type]
-    elif isinstance(sort, UnionSort):
-        return UnionExpr(node)  # type: ignore[arg-type]
-    else:
-        return Expr(node)
+    for sort_type, expr_type in VarExpr.SORT_TO_EXPR_BASE.items():
+        if isinstance(node.sort, sort_type):
+            return expr_type(node)
+    return Expr(node)
 
 
 def coerce_int_node(value: Expr | int) -> Node:
     """Coerce a value to an integer Node."""
     if isinstance(value, Expr) and isinstance(value._node.sort, IntSort):
         return value._node
-    elif isinstance(value, int):
+    if isinstance(value, int):
         return LitNode(value)
-    else:
-        raise TypeError(f"Cannot coerce {type(value).__name__} to integer sort")
+    raise TypeError(f"Cannot coerce {type(value).__name__} to integer sort")
 
 
 def coerce_bool_node(value: Expr | bool) -> Node:
     """Coerce a value to a boolean Node."""
     if isinstance(value, Expr) and isinstance(value._node.sort, BoolSort):
         return value._node
-    elif isinstance(value, bool):
+    if isinstance(value, bool):
         return LitNode(value)
-    else:
-        raise TypeError(f"Cannot coerce {type(value).__name__} to Boolean sort")
+    raise TypeError(f"Cannot coerce {type(value).__name__} to Boolean sort")
 
 
 def coerce_expr(value: Any, sort: Sort | None = None) -> Expr:

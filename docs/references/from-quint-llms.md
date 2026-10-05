@@ -46,19 +46,19 @@ from wunderspec import *
 
 
 @state
-class SpecState(MachineStateBase):
+class SpecMachineState(MachineStateBase):
     N: Param[int]
     x: StateVar[int]
 
 
 @action(init=True)
-def init(c: Context[SpecState]):
+def init(c: Context[SpecMachineState]):
     s = c.state
     s.x = Val(0)
 
 
 @action
-def step(c: Context[SpecState]):
+def step(c: Context[SpecMachineState]):
     s = c.state
     s.x = s.x + Val(1)
 ```
@@ -77,6 +77,11 @@ def step(c: Context[SpecState]):
 | `val inv: bool = ...` | `@invariant def inv(s): return ...` |
 | `type T = { field: U, ... }` | `@record class T: field: Field[U]` |
 | `type T = A(U) \| B` (tagged union) | `@union class T: A: Variant[U]; B: Variant[Unit]` |
+
+The converter names the generated `@state` class `<Module>MachineState`. This
+keeps the machine container distinct from translated Quint data types such as
+`ReplicaState`. Concrete instances of generic union types receive semantic
+names, for example `Option[Proposal]` becomes `OptionProposal`.
 
 Rule of thumb:
 

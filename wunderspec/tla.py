@@ -125,6 +125,74 @@ class ExtractedExprDef:
     comment: str | None = None
 
 
+State = TypeVar("State", bound=MachineState)
+
+
+# =============================================================================
+# Public translation API
+# =============================================================================
+
+
+def to_tla(
+    state: type[State],
+    name: str = "untitled",
+    extends: list[str] | None = None,
+    /,
+    extracted_actions: Mapping[str, ExtractedActionDef] | None = None,
+    init_ops: set[str] | None = None,
+    text_width: int = 79,
+    text_indent: int = 4,
+    operator_labels: Mapping[str, str] | None = None,
+    operator_comments: Mapping[str, str] | None = None,
+    **nodes: Node,
+) -> str:
+    """Convert a Wunderspec specification to TLA+."""
+    return _to_tla_impl(
+        state,
+        name,
+        extends,
+        extracted_actions=extracted_actions,
+        init_ops=init_ops,
+        text_width=text_width,
+        text_indent=text_indent,
+        operator_labels=operator_labels,
+        operator_comments=operator_comments,
+        **nodes,
+    )
+
+
+def to_tla_instance(
+    state: type[State],
+    name: str,
+    target_module: str,
+    fixed_params: Mapping[str, Node],
+    include_variables: bool = True,
+    include_behavior_spec: bool = False,
+    init_op: str = "Init",
+    step_op: str = "Step",
+    text_width: int = 79,
+    text_indent: int = 4,
+) -> str:
+    """Generate a model-checking wrapper module with fixed constants."""
+    return _to_tla_instance_impl(
+        state,
+        name,
+        target_module,
+        fixed_params,
+        include_variables=include_variables,
+        include_behavior_spec=include_behavior_spec,
+        init_op=init_op,
+        step_op=step_op,
+        text_width=text_width,
+        text_indent=text_indent,
+    )
+
+
+# =============================================================================
+# Translation helpers
+# =============================================================================
+
+
 def _render_tla_doc(doc: AbstractDoc, *, text_width: int, text_indent: int) -> str:
     return render_doc(with_text_indent(doc, text_indent), text_width)
 
@@ -2058,10 +2126,7 @@ def _toposort_ops(ops: list[str], dep_graph: dict[str, set[str]]) -> list[str]:
     return sorted_ops
 
 
-State = TypeVar("State", bound=MachineState)
-
-
-def to_tla(
+def _to_tla_impl(
     state: type[State],
     name: str = "untitled",
     extends: list[str] | None = None,
@@ -2326,7 +2391,7 @@ def to_tla(
     return "\n".join(lines)
 
 
-def to_tla_instance(
+def _to_tla_instance_impl(
     state: type[State],
     name: str,
     target_module: str,

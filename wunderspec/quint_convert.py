@@ -9,6 +9,7 @@ and placeholders for unsupported Quint IR nodes.
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import keyword
 import re
@@ -377,7 +378,7 @@ class _PythonGenerator:
         self.options = options
         self.module = self._find_module(main)
         self.module_name = str(self.module.get("name"))
-        self.state_class_name = f"{_class_name(self.module_name)}State"
+        self.state_class_name = f"{_class_name(self.module_name)}MachineState"
         self.definition_names: list[str] = []
         self._current_state_ref = "s"
         main_decls = [
@@ -392,34 +393,18 @@ class _PythonGenerator:
         self._instance = self._select_direct_instance(main_decls)
         self._decls = self._effective_decls(main_decls)
         self._main_decl_ids = {id(d) for d in self._decls}
-        self._raw_type_aliases = {
-            str(d.get("name")): d.get("type")
+        self._raw_type_aliases: dict[str, dict[str, Any]] = {
+            str(d.get("name")): cast(dict[str, Any], d.get("type"))
             for d in self._all_decls
             if d.get("kind") == "typedef"
             and isinstance(d.get("type"), dict)
             and not d.get("params")
-            and d.get("type", {}).get("kind") not in {"rec", "sum"}
         }
-        self._anonymous_union_names: dict[str, str] = {}
-        self._anonymous_union_types: dict[str, Any] = {}
-        self._predeclare_anonymous_unions()
         self._type_aliases = {
-            str(d.get("name")): d.get("type")
-            for d in self._all_decls
-            if d.get("kind") == "typedef"
-            and isinstance(d.get("type"), dict)
-            and not d.get("params")
-            and d.get("type", {}).get("kind") not in {"rec", "sum"}
+            name: typ
+            for name, typ in self._raw_type_aliases.items()
+            if typ.get("kind") not in {"rec", "sum"}
         }
-        self._named_types = {
-            self._type_key(d.get("type")): _class_name(str(d.get("name")))
-            for d in self._all_decls
-            if d.get("kind") == "typedef"
-            and isinstance(d.get("type"), dict)
-            and not d.get("params")
-            and d.get("type", {}).get("kind") in {"rec", "sum"}
-        }
-        self._named_types.update(self._anonymous_union_names)
         self._typedef_class_names = {
             str(d.get("name")): _class_name(str(d.get("name")))
             for d in self._all_decls
@@ -428,20 +413,72 @@ class _PythonGenerator:
             and not d.get("params")
             and d.get("type", {}).get("kind") in {"rec", "sum"}
         }
-        self._record_type_names_by_fields = {
-            tuple(
-                sorted(
-                    field_name
-                    for field_name, _ in _row_fields(
-                        d.get("type", {}).get("fields", {})
-                    )
-                )
-            ): _class_name(str(d.get("name")))
+        named_type_candidates: dict[str, list[str]] = {}
+        for decl in self._all_decls:
+            typ = decl.get("type")
+            if (
+                decl.get("kind") != "typedef"
+                or decl.get("params")
+                or not isinstance(typ, dict)
+                or typ.get("kind") not in {"rec", "sum"}
+            ):
+                continue
+            key = self._type_key(typ)
+            named_type_candidates.setdefault(key, []).append(
+                _class_name(str(decl.get("name")))
+            )
+        self._named_types = {
+            key: names[0]
+            for key, names in named_type_candidates.items()
+            if len(set(names)) == 1
+        }
+        self._generic_union_types = [
+            (
+                _class_name(str(d.get("name"))),
+                tuple(str(param) for param in d.get("params", [])),
+                d.get("type"),
+            )
+            for d in self._all_decls
+            if d.get("kind") == "typedef"
+            and isinstance(d.get("type"), dict)
+            and d.get("params")
+            and d.get("type", {}).get("kind") == "sum"
+        ]
+        self._reserved_type_names = {
+            _class_name(str(d.get("name")))
             for d in self._all_decls
             if d.get("kind") == "typedef"
             and isinstance(d.get("type"), dict)
             and not d.get("params")
-            and d.get("type", {}).get("kind") == "rec"
+        } | {self.state_class_name}
+        self._generated_type_name_keys: dict[str, str] = {}
+        self._anonymous_union_names: dict[str, str] = {}
+        self._anonymous_union_types: dict[str, Any] = {}
+        self._predeclare_anonymous_unions()
+        for key, name in self._anonymous_union_names.items():
+            self._named_types.setdefault(key, name)
+        record_names_by_fields: dict[tuple[str, ...], list[str]] = {}
+        for decl in self._all_decls:
+            typ = decl.get("type")
+            if (
+                decl.get("kind") != "typedef"
+                or decl.get("params")
+                or not isinstance(typ, dict)
+                or typ.get("kind") != "rec"
+            ):
+                continue
+            fields = tuple(
+                sorted(
+                    field_name for field_name, _ in _row_fields(typ.get("fields", {}))
+                )
+            )
+            record_names_by_fields.setdefault(fields, []).append(
+                _class_name(str(decl.get("name")))
+            )
+        self._record_type_names_by_fields = {
+            fields: names[0]
+            for fields, names in record_names_by_fields.items()
+            if len(set(names)) == 1
         }
         self._union_ctors_by_name: dict[str, list[tuple[str, str, Any]]] = {}
         for decl in self._all_decls:
@@ -498,6 +535,11 @@ class _PythonGenerator:
         self._local_expr_name_stack: list[set[str]] = []
         self._local_action_name_stack: list[set[str]] = []
         self._local_type_stack: list[dict[str, Any]] = []
+        self._alternatives_counter = 0
+
+    def _fresh_alternatives_name(self) -> str:
+        self._alternatives_counter += 1
+        return f"_quint_alts_{self._alternatives_counter}"
 
     def _find_module(self, name: str) -> dict[str, Any]:
         for module in self.ir.get("modules", []):
@@ -632,17 +674,20 @@ class _PythonGenerator:
     def _type_key(self, typ: Any) -> str:
         return _type_key(self._expand_type_aliases(typ))
 
-    def _expand_type_aliases(self, typ: Any) -> Any:
+    def _expand_type_aliases(
+        self, typ: Any, expanding: frozenset[str] = frozenset()
+    ) -> Any:
         if isinstance(typ, list):
-            return [self._expand_type_aliases(item) for item in typ]
+            return [self._expand_type_aliases(item, expanding) for item in typ]
         if not isinstance(typ, dict):
             return typ
         if typ.get("kind") == "const":
-            alias = self._raw_type_aliases.get(str(typ.get("name")))
-            if isinstance(alias, dict):
-                return self._expand_type_aliases(alias)
+            name = str(typ.get("name"))
+            alias = self._raw_type_aliases.get(name)
+            if isinstance(alias, dict) and name not in expanding:
+                return self._expand_type_aliases(alias, expanding | {name})
         return {
-            key: self._expand_type_aliases(value) if key != "id" else value
+            key: (self._expand_type_aliases(value, expanding) if key != "id" else value)
             for key, value in typ.items()
         }
 
@@ -732,15 +777,164 @@ class _PythonGenerator:
                 return decl_type
         return self._type_hint(expr.get("id"))
 
+    def _match_generic_union(
+        self, template: Any, params: tuple[str, ...], concrete: Any
+    ) -> dict[str, Any] | None:
+        """Unify a generic sum template with a concrete sum type."""
+        param_names = set(params)
+        bindings: dict[str, Any] = {}
+
+        def match(left: Any, right: Any) -> bool:
+            left = self._expand_type_aliases(left)
+            right = self._expand_type_aliases(right)
+            if (
+                isinstance(left, dict)
+                and left.get("kind") == "var"
+                and str(left.get("name")) in param_names
+            ):
+                name = str(left.get("name"))
+                previous = bindings.get(name)
+                if previous is None:
+                    bindings[name] = right
+                    return True
+                return self._type_key(previous) == self._type_key(right)
+            if isinstance(left, list) or isinstance(right, list):
+                return (
+                    isinstance(left, list)
+                    and isinstance(right, list)
+                    and len(left) == len(right)
+                    and all(match(a, b) for a, b in zip(left, right))
+                )
+            if not isinstance(left, dict) or not isinstance(right, dict):
+                return bool(left == right)
+            left_kind = left.get("kind")
+            if left_kind != right.get("kind"):
+                return False
+            if left_kind == "empty":
+                return True
+            if (
+                left_kind == "tup"
+                and not _row_fields(left.get("fields", {}))
+                and not _row_fields(right.get("fields", {}))
+            ):
+                return True
+            if left_kind == "row":
+                left_fields = dict(_row_fields(left))
+                right_fields = dict(_row_fields(right))
+                return left_fields.keys() == right_fields.keys() and all(
+                    match(left_fields[name], right_fields[name]) for name in left_fields
+                )
+            left_items = {k: v for k, v in left.items() if k != "id"}
+            right_items = {k: v for k, v in right.items() if k != "id"}
+            return left_items.keys() == right_items.keys() and all(
+                match(left_items[name], right_items[name]) for name in left_items
+            )
+
+        if match(template, concrete) and all(param in bindings for param in params):
+            return bindings
+        return None
+
+    def _generic_union_matches(
+        self, typ: Any
+    ) -> list[tuple[str, tuple[str, ...], dict[str, Any]]]:
+        matches: list[tuple[str, tuple[str, ...], dict[str, Any]]] = []
+        for name, params, template in self._generic_union_types:
+            bindings = self._match_generic_union(template, params, typ)
+            if bindings is not None:
+                matches.append((name, params, bindings))
+        return matches
+
+    def _type_name_fragment(
+        self, typ: Any, seen: frozenset[str] = frozenset()
+    ) -> str | None:
+        typ = self._expand_type_aliases(typ)
+        key = self._type_key(typ)
+        if key in seen:
+            return None
+        named = self._named_types.get(key)
+        if named is not None:
+            return named
+        if not isinstance(typ, dict):
+            return None
+        kind = typ.get("kind")
+        primitives = {"int": "Int", "bool": "Bool", "str": "Str"}
+        if kind in primitives:
+            return primitives[kind]
+        nested_seen = seen | {key}
+        if kind in {"set", "list"}:
+            elem = self._type_name_fragment(typ.get("elem"), nested_seen)
+            return None if elem is None else kind.title() + elem
+        if kind in {"map", "fun"}:
+            key_type = typ.get("from") or typ.get("arg")
+            value_type = typ.get("to") or typ.get("res")
+            key_name = self._type_name_fragment(key_type, nested_seen)
+            value_name = self._type_name_fragment(value_type, nested_seen)
+            if key_name is None or value_name is None:
+                return None
+            return f"Map{key_name}To{value_name}"
+        if kind == "tup":
+            fields = _row_fields(typ.get("fields", {}))
+            if not fields:
+                return "Unit"
+            names = [
+                self._type_name_fragment(field_type, nested_seen)
+                for _, field_type in fields
+            ]
+            if any(name is None for name in names):
+                return None
+            return "Tuple" + "".join(cast(str, name) for name in names)
+        if kind == "sum":
+            matches = self._generic_union_matches(typ)
+            if len(matches) != 1:
+                return None
+            generic_name, params, bindings = matches[0]
+            names = [
+                self._type_name_fragment(bindings[param], nested_seen)
+                for param in params
+            ]
+            if any(name is None for name in names):
+                return None
+            return generic_name + "".join(cast(str, name) for name in names)
+        return None
+
+    def _allocate_generated_type_name(
+        self, base: str, key: str, *, force_digest: bool
+    ) -> str:
+        candidate = base
+        if not force_digest and candidate not in self._reserved_type_names:
+            previous = self._generated_type_name_keys.get(candidate)
+            if previous is None or previous == key:
+                self._generated_type_name_keys[candidate] = key
+                return candidate
+
+        digest = hashlib.sha256(key.encode()).hexdigest()
+        for length in range(8, len(digest) + 1, 4):
+            candidate = f"{base}_{digest[:length]}"
+            if candidate in self._reserved_type_names:
+                continue
+            previous = self._generated_type_name_keys.get(candidate)
+            if previous is None or previous == key:
+                self._generated_type_name_keys[candidate] = key
+                return candidate
+        raise QuintConvertError(f"could not allocate a generated type name for {base}")
+
+    def _generated_union_name(self, typ: Any, key: str) -> str:
+        matches = self._generic_union_matches(typ)
+        if len(matches) == 1:
+            generic_name, params, bindings = matches[0]
+            fragments = [self._type_name_fragment(bindings[param]) for param in params]
+            if all(fragment is not None for fragment in fragments):
+                base = generic_name + "".join(
+                    cast(str, fragment) for fragment in fragments
+                )
+                return self._allocate_generated_type_name(base, key, force_digest=False)
+            return self._allocate_generated_type_name(
+                generic_name, key, force_digest=True
+            )
+        return self._allocate_generated_type_name("_QuintUnion", key, force_digest=True)
+
     def _predeclare_anonymous_unions(self) -> None:
-        named_sum_keys = {
-            self._type_key(decl.get("type"))
-            for decl in self._all_decls
-            if decl.get("kind") == "typedef"
-            and not decl.get("params")
-            and isinstance(decl.get("type"), dict)
-            and decl.get("type", {}).get("kind") == "sum"
-        }
+        named_sum_keys = set(self._named_types)
 
         def consider(typ: Any) -> None:
             if isinstance(typ, list):
@@ -756,8 +950,8 @@ class _PythonGenerator:
                     and key not in self._anonymous_union_names
                     and not self._type_contains_var(typ)
                 ):
-                    self._anonymous_union_names[key] = (
-                        f"_QuintUnion{len(self._anonymous_union_names) + 1}"
+                    self._anonymous_union_names[key] = self._generated_union_name(
+                        typ, key
                     )
                     self._anonymous_union_types[key] = typ
             for child in typ.values():
@@ -845,6 +1039,9 @@ class _PythonGenerator:
             "import os",
             "import random",
             "import unittest",
+            "from contextlib import contextmanager",
+            "from contextvars import ContextVar",
+            "from copy import copy",
             "",
             "from wunderspec import *",
             "from wunderspec.machine import MachineStateBase",
@@ -867,6 +1064,23 @@ class _PythonGenerator:
 
     def _render_prelude_helpers(self) -> list[str]:
         return [
+            "_quint_action_snapshots = ContextVar('_quint_action_snapshots', default=None)",
+            "",
+            "",
+            "@contextmanager",
+            "def _quint_action_snapshot(c):",
+            "    active = _quint_action_snapshots.get()",
+            "    owns_snapshot = active is None or active[0] is not c",
+            "    if owns_snapshot:",
+            "        token = _quint_action_snapshots.set((c, copy(c.state)))",
+            "        active = _quint_action_snapshots.get()",
+            "    try:",
+            "        yield active[1]",
+            "    finally:",
+            "        if owns_snapshot:",
+            "            _quint_action_snapshots.reset(token)",
+            "",
+            "",
             "def _quint_sort_list(list_expr, lt):",
             "    elem_sort = list_expr.sort.elem_sort",
             "",
@@ -1112,13 +1326,19 @@ class _PythonGenerator:
             decorator,
             f"def {_py_name(name)}(c: Context[{self.state_class_name}]{sig_tail}):",
             "    s = c.state",
+            "    with _quint_action_snapshot(c) as _quint_state:",
         ]
         body_expr = expr.get("expr") if expr.get("kind") == "lambda" else expr
-        self._emit_action(
-            body_expr, lines, indent="    ", env=set(py_params), def_name=name
-        )
-        if len(lines) == 3:
-            lines.append("    pass")
+        old_state_ref = self._current_state_ref
+        self._current_state_ref = "_quint_state"
+        try:
+            self._emit_action(
+                body_expr, lines, indent="        ", env=set(py_params), def_name=name
+            )
+        finally:
+            self._current_state_ref = old_state_ref
+        if len(lines) == 4:
+            lines.append("        pass")
         lines.append("")
         self.definition_names.append(name)
         return "\n".join(lines)
@@ -1402,11 +1622,13 @@ class _PythonGenerator:
             lines.append(f"{indent}{target} = {value_code}")
         elif op == "actionAny":
             labels = [self._alternative_label(arg, i) for i, arg in enumerate(args)]
+            alternatives_name = self._fresh_alternatives_name()
             lines.append(
-                f"{indent}alts = iter(c.alternatives({', '.join(repr(x) for x in labels)}))"
+                f"{indent}{alternatives_name} = "
+                f"iter(c.alternatives({', '.join(repr(x) for x in labels)}))"
             )
             for arg in args:
-                lines.append(f"{indent}with next(alts):")
+                lines.append(f"{indent}with next({alternatives_name}):")
                 self._emit_action(
                     arg, lines, indent=indent + "    ", env=env, def_name=def_name
                 )
@@ -2154,13 +2376,15 @@ class _PythonGenerator:
             return
 
         labels = [branch.py_tag for branch in branches]
+        alternatives_name = self._fresh_alternatives_name()
         self._emit_pending_comments(lines, indent)
         lines.append(f"{indent}{match_name} = {scrutinee}")
         lines.append(
-            f"{indent}alts = iter(c.alternatives({', '.join(repr(x) for x in labels)}))"
+            f"{indent}{alternatives_name} = "
+            f"iter(c.alternatives({', '.join(repr(x) for x in labels)}))"
         )
         for branch in branches:
-            lines.append(f"{indent}with next(alts):")
+            lines.append(f"{indent}with next({alternatives_name}):")
             branch_indent = indent + "    "
             lines.append(
                 f"{branch_indent}c.assume({match_name}.tag == Val({branch.py_tag!r}))"

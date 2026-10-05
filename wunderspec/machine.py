@@ -35,7 +35,7 @@ from wunderspec.expr import (
     UpdateContext,
     UpdatesBuilder,
     VarExpr,
-    _is_record_field_attribute,
+    _RecordFields,
     coerce_expr,
     expr_from_node,
 )
@@ -73,24 +73,6 @@ _suppressed_predicate_ids: ContextVar[frozenset[int]] = ContextVar(
 )
 
 
-def _is_state_like(value: Any) -> bool:
-    return (
-        hasattr(value, "_params")
-        and isinstance(getattr(value, "_params"), tuple)
-        and hasattr(value, "_vars")
-        and isinstance(getattr(value, "_vars"), tuple)
-        and callable(getattr(value, "_asdict", None))
-    )
-
-
-def _is_state_view_like(value: Any) -> bool:
-    return (
-        hasattr(value, "_mapping")
-        and hasattr(value, "_params")
-        and callable(getattr(value, "__getitem__", None))
-    )
-
-
 @contextmanager
 def predicate_expr_extraction(
     ops: dict[Callable[..., Any], str],
@@ -106,134 +88,6 @@ def predicate_expr_extraction(
     finally:
         _suppressed_predicate_ids.reset(suppressed_token)
         _predicate_expr_ops.reset(labels_token)
-
-
-def _predicate_expr_call(
-    wrapper: Callable[..., Any],
-    func: Callable[..., Any],
-    op_name: str,
-    *args: Any,
-    **kwargs: Any,
-) -> Expr:
-    sig = inspect.signature(wrapper)
-    bound = sig.bind(*args, **kwargs)
-    bound.apply_defaults()
-
-    actual_arg_nodes: list[Node] = []
-    param_names: list[str] = []
-    call_args: list[Any] = []
-    call_kwargs: dict[str, Any] = {}
-
-    for param_name, param in sig.parameters.items():
-        if param_name not in bound.arguments:
-            continue
-        arg_value = bound.arguments[param_name]
-        if _is_state_like(arg_value) or _is_state_view_like(arg_value):
-            call_arg = arg_value
-        else:
-            arg_expr = coerce_expr(arg_value)
-            actual_arg_nodes.append(arg_expr.node)
-            param_names.append(param_name)
-            call_arg = VarExpr(param_name, arg_expr.sort)
-
-        if param.kind in (
-            inspect.Parameter.POSITIONAL_ONLY,
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-        ):
-            call_args.append(call_arg)
-        elif param.kind is inspect.Parameter.VAR_POSITIONAL:
-            call_args.extend(call_arg)
-        elif param.kind is inspect.Parameter.KEYWORD_ONLY:
-            call_kwargs[param_name] = call_arg
-        elif param.kind is inspect.Parameter.VAR_KEYWORD:
-            call_kwargs.update(call_arg)
-
-    result = coerce_expr(func(*call_args, **call_kwargs))
-    return expr_from_node(
-        ExprCallNode(
-            op_name,
-            tuple(actual_arg_nodes),
-            result.node,
-            tuple(param_names),
-            comment=inspect.getdoc(wrapper),
-        )
-    )
-
-
-class _AssignableStateExpr(Expr):
-    """State variable expression that supports direct, assignment-like updates.
-
-    Reading a state variable returns one of these wrappers. For *reads* it
-    behaves exactly like the underlying :class:`Expr` (indexing, slicing,
-    unpacking, record-field access, operators). For *writes* it lets you update
-    nested structures with plain Python assignment syntax::
-
-        s.x[k] = v            # map / list element
-        s.req[p][q] = v       # nested map path
-        s.chan.val = v        # record field
-        s.cfg[k].val = v      # element, then record field
-
-    Reads never touch the update machinery: ``__getitem__``/record-field access
-    return the properly typed sub-expression (wrapped so further assignment still
-    works). A write lazily builds a fresh immediate-mode
-    :class:`StateUpdatesBuilder` and replays the accumulated path, so the state
-    field is updated on the spot and the next access re-reads the new value.
-    Nothing is cached on the state, which keeps direct assignment safe across
-    ``c.alternatives``/``c.one_of`` branches that snapshot and roll back state.
-    """
-
-    def __init__(self, read_expr: Expr, make_builder: Callable[[], Any]):
-        super().__init__(read_expr._node)
-        # ``_read`` is the properly typed expression used for all read access.
-        # ``_make_builder`` lazily produces the path-aware update builder that a
-        # write at this position should target (only called on assignment).
-        object.__setattr__(self, "_read", read_expr)
-        object.__setattr__(self, "_make_builder", make_builder)
-
-    def __getitem__(self, key: object) -> Expr:
-        read = object.__getattribute__(self, "_read")
-        item: Expr = read[key]  # properly typed read expression
-        if isinstance(key, slice):
-            # Slices are read-only; assignment to x[a:b] is unsupported anyway.
-            return item
-        make_builder = object.__getattribute__(self, "_make_builder")
-        key_expr = coerce_expr(key)
-        return _AssignableStateExpr(item, lambda: make_builder()[key_expr])
-
-    def __setitem__(self, key: object, value: object) -> None:
-        make_builder = cast(
-            Callable[[], UpdatesBuilder], object.__getattribute__(self, "_make_builder")
-        )
-        make_builder()[coerce_expr(key)] = value
-
-    def __getattribute__(self, name: str) -> Expr:
-        # Record-field access returns a wrapper that reads the field but still
-        # routes a later assignment (``s.cfg[k].val = v``) through the builder.
-        if _is_record_field_attribute(name):
-            try:
-                node = object.__getattribute__(self, "_node")
-            except AttributeError:
-                pass
-            else:
-                if isinstance(node.sort, RecordSort) and name in node.sort:
-                    read = cast(Expr, object.__getattribute__(self, "_read"))
-                    make_builder = cast(
-                        Callable[[], UpdatesBuilder],
-                        object.__getattribute__(self, "_make_builder"),
-                    )
-                    return _AssignableStateExpr(
-                        read[name], lambda: getattr(make_builder(), name)
-                    )
-        return cast(Expr, object.__getattribute__(self, name))
-
-    def __setattr__(self, name: str, value: object) -> None:
-        if name.startswith("_"):
-            object.__setattr__(self, name, value)
-            return
-        make_builder = cast(
-            Callable[[], UpdatesBuilder], object.__getattribute__(self, "_make_builder")
-        )
-        setattr(make_builder(), name, value)
 
 
 if TYPE_CHECKING:
@@ -842,20 +696,6 @@ class StateUpdatesBuilder:
         object.__setattr__(self, "_applied", True)
 
 
-class _StateEditSession:
-    """Context manager wrapper for state.edit()."""
-
-    def __init__(self, builder: StateUpdatesBuilder):
-        self._builder = builder
-
-    def __enter__(self) -> StateUpdatesBuilder:
-        return self._builder
-
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
-        if exc_value is None:
-            self._builder.apply()
-
-
 @overload
 def invariant(func: _F) -> _F: ...
 
@@ -880,8 +720,12 @@ def invariant(
             return s.x >= Val(0)
     """
     if func is not None:
-        return cast(_F, _predicate_wrapper(func, "_is_invariant", inline=inline))
-    return lambda fn: cast(_F, _predicate_wrapper(fn, "_is_invariant", inline=inline))
+        return cast(
+            _F, _PredicateExpressions.wrap(func, "_is_invariant", inline=inline)
+        )
+    return lambda fn: cast(
+        _F, _PredicateExpressions.wrap(fn, "_is_invariant", inline=inline)
+    )
 
 
 @overload
@@ -906,26 +750,10 @@ def example(func: _F | None = None, *, inline: bool = False) -> _F | Callable[[_
             return s.x == Val(1)
     """
     if func is not None:
-        return cast(_F, _predicate_wrapper(func, "_is_example", inline=inline))
-    return lambda fn: cast(_F, _predicate_wrapper(fn, "_is_example", inline=inline))
-
-
-def _predicate_wrapper(
-    func: Callable[..., Any], marker: str, *, inline: bool
-) -> Callable[..., Any]:
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        ops = _predicate_expr_ops.get()
-        suppressed = _suppressed_predicate_ids.get()
-        if ops is not None and id(wrapper) in ops and id(wrapper) not in suppressed:
-            return _predicate_expr_call(
-                wrapper, func, ops[id(wrapper)], *args, **kwargs
-            )
-        return func(*args, **kwargs)
-
-    setattr(wrapper, marker, True)
-    setattr(wrapper, "_inline", inline)
-    return wrapper
+        return cast(_F, _PredicateExpressions.wrap(func, "_is_example", inline=inline))
+    return lambda fn: cast(
+        _F, _PredicateExpressions.wrap(fn, "_is_example", inline=inline)
+    )
 
 
 def temporal(func: _F) -> _F:
@@ -1394,3 +1222,167 @@ class FixedValueGenerator(ValueGenerator[Expr]):
 
     def __repr__(self) -> str:
         return f"FixedValueGenerator({repr(self.predefined_value)})"
+
+
+# =============================================================================
+# Internal helper namespaces and state
+# =============================================================================
+
+
+class _PredicateExpressions:
+    """Build calls to predicates extracted as named expression operators."""
+
+    @staticmethod
+    def is_state_like(value: Any) -> bool:
+        return (
+            hasattr(value, "_params")
+            and isinstance(getattr(value, "_params"), tuple)
+            and hasattr(value, "_vars")
+            and isinstance(getattr(value, "_vars"), tuple)
+            and callable(getattr(value, "_asdict", None))
+        )
+
+    @staticmethod
+    def is_state_view_like(value: Any) -> bool:
+        return (
+            hasattr(value, "_mapping")
+            and hasattr(value, "_params")
+            and callable(getattr(value, "__getitem__", None))
+        )
+
+    @staticmethod
+    def call(
+        wrapper: Callable[..., Any],
+        func: Callable[..., Any],
+        op_name: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Expr:
+        sig = inspect.signature(wrapper)
+        bound = sig.bind(*args, **kwargs)
+        bound.apply_defaults()
+
+        actual_arg_nodes: list[Node] = []
+        param_names: list[str] = []
+        call_args: list[Any] = []
+        call_kwargs: dict[str, Any] = {}
+
+        for param_name, param in sig.parameters.items():
+            if param_name not in bound.arguments:
+                continue
+            arg_value = bound.arguments[param_name]
+            if _PredicateExpressions.is_state_like(
+                arg_value
+            ) or _PredicateExpressions.is_state_view_like(arg_value):
+                call_arg = arg_value
+            else:
+                arg_expr = coerce_expr(arg_value)
+                actual_arg_nodes.append(arg_expr.node)
+                param_names.append(param_name)
+                call_arg = VarExpr(param_name, arg_expr.sort)
+
+            if param.kind in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            ):
+                call_args.append(call_arg)
+            elif param.kind is inspect.Parameter.VAR_POSITIONAL:
+                call_args.extend(call_arg)
+            elif param.kind is inspect.Parameter.KEYWORD_ONLY:
+                call_kwargs[param_name] = call_arg
+            elif param.kind is inspect.Parameter.VAR_KEYWORD:
+                call_kwargs.update(call_arg)
+
+        result = coerce_expr(func(*call_args, **call_kwargs))
+        return expr_from_node(
+            ExprCallNode(
+                op_name,
+                tuple(actual_arg_nodes),
+                result.node,
+                tuple(param_names),
+                comment=inspect.getdoc(wrapper),
+            )
+        )
+
+    @staticmethod
+    def wrap(
+        func: Callable[..., Any], marker: str, *, inline: bool
+    ) -> Callable[..., Any]:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            ops = _predicate_expr_ops.get()
+            suppressed = _suppressed_predicate_ids.get()
+            if ops is not None and id(wrapper) in ops and id(wrapper) not in suppressed:
+                return _PredicateExpressions.call(
+                    wrapper, func, ops[id(wrapper)], *args, **kwargs
+                )
+            return func(*args, **kwargs)
+
+        setattr(wrapper, marker, True)
+        setattr(wrapper, "_inline", inline)
+        return wrapper
+
+
+class _AssignableStateExpr(Expr):
+    """Wrap a state expression so nested assignment routes through an edit builder."""
+
+    def __init__(self, read_expr: Expr, make_builder: Callable[[], Any]):
+        super().__init__(read_expr._node)
+        object.__setattr__(self, "_read", read_expr)
+        object.__setattr__(self, "_make_builder", make_builder)
+
+    def __getitem__(self, key: object) -> Expr:
+        read = object.__getattribute__(self, "_read")
+        item: Expr = read[key]
+        if isinstance(key, slice):
+            return item
+        make_builder = object.__getattribute__(self, "_make_builder")
+        key_expr = coerce_expr(key)
+        return _AssignableStateExpr(item, lambda: make_builder()[key_expr])
+
+    def __setitem__(self, key: object, value: object) -> None:
+        make_builder = cast(
+            Callable[[], UpdatesBuilder], object.__getattribute__(self, "_make_builder")
+        )
+        make_builder()[coerce_expr(key)] = value
+
+    def __getattribute__(self, name: str) -> Expr:
+        if _RecordFields.is_field_attribute(name):
+            try:
+                node = object.__getattribute__(self, "_node")
+            except AttributeError:
+                pass
+            else:
+                if isinstance(node.sort, RecordSort) and name in node.sort:
+                    read = cast(Expr, object.__getattribute__(self, "_read"))
+                    make_builder = cast(
+                        Callable[[], UpdatesBuilder],
+                        object.__getattribute__(self, "_make_builder"),
+                    )
+                    return _AssignableStateExpr(
+                        read[name], lambda: getattr(make_builder(), name)
+                    )
+        return cast(Expr, object.__getattribute__(self, name))
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if name.startswith("_"):
+            object.__setattr__(self, name, value)
+            return
+        make_builder = cast(
+            Callable[[], UpdatesBuilder], object.__getattribute__(self, "_make_builder")
+        )
+        setattr(make_builder(), name, value)
+
+
+class _StateEditSession:
+    """Apply a state edit builder when its context exits successfully."""
+
+    def __init__(self, builder: StateUpdatesBuilder):
+        self._builder = builder
+
+    def __enter__(self) -> StateUpdatesBuilder:
+        return self._builder
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        if exc_value is None:
+            self._builder.apply()

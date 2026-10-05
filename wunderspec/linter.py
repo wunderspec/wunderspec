@@ -127,6 +127,42 @@ class LintAnalysis:
     effects: dict[str, ActionEffects]
 
 
+# =============================================================================
+# Public lint API
+# =============================================================================
+
+
+def render_effects_report(effects: dict[str, ActionEffects]) -> str:
+    """Render action effects in a stable, human-readable format."""
+    return _render_effects_report_impl(effects)
+
+
+def analyze(
+    path: Path,
+    *,
+    _visited: set[Path] | None = None,
+    _include_related: bool = True,
+    _include_errors: bool = True,
+) -> LintAnalysis:
+    """Analyze a specification and return errors, warnings, and action effects."""
+    return _analyze_impl(
+        path,
+        _visited=_visited,
+        _include_related=_include_related,
+        _include_errors=_include_errors,
+    )
+
+
+def lint(path: Path) -> list[LintError]:
+    """Return the lint errors found in a specification."""
+    return analyze(path).errors
+
+
+# =============================================================================
+# Lint implementation helpers
+# =============================================================================
+
+
 @dataclass(frozen=True)
 class _ActionDefInfo:
     node: Node
@@ -1111,7 +1147,7 @@ def _iter_related_spec_modules(module: Any, path: Path) -> list[tuple[str, Path]
     return related
 
 
-def render_effects_report(effects: dict[str, ActionEffects]) -> str:
+def _render_effects_report_impl(effects: dict[str, ActionEffects]) -> str:
     lines: list[str] = []
     for action_name in sorted(effects):
         effect = effects[action_name]
@@ -1520,7 +1556,7 @@ def _lazy_alias_warnings_for_action(
     return analyzer.analyze(function_node.body)
 
 
-def analyze(
+def _analyze_impl(
     path: Path,
     *,
     _visited: set[Path] | None = None,
@@ -1693,7 +1729,3 @@ def analyze(
         warnings=warnings if _include_errors else [],
         effects=effects,
     )
-
-
-def lint(path: Path) -> list[LintError]:
-    return analyze(path).errors
