@@ -1,0 +1,4446 @@
+{
+  "$defs": {
+    "ActionAndFields": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "title": "Actions",
+          "type": "array"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "actions"
+      ],
+      "title": "ActionAndFields",
+      "type": "object"
+    },
+    "ActionAndNode": {
+      "additionalProperties": false,
+      "properties": {
+        "actionAnd": {
+          "$ref": "#/$defs/ActionAndFields"
+        }
+      },
+      "required": [
+        "actionAnd"
+      ],
+      "title": "ActionAndNode",
+      "type": "object"
+    },
+    "ActionCallFields": {
+      "additionalProperties": false,
+      "properties": {
+        "actionName": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Actionname",
+          "type": "string"
+        },
+        "args": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "title": "Args",
+          "type": "array"
+        },
+        "body": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "actionName",
+        "args",
+        "body"
+      ],
+      "title": "ActionCallFields",
+      "type": "object"
+    },
+    "ActionCallNode": {
+      "additionalProperties": false,
+      "properties": {
+        "actionCall": {
+          "$ref": "#/$defs/ActionCallFields"
+        }
+      },
+      "required": [
+        "actionCall"
+      ],
+      "title": "ActionCallNode",
+      "type": "object"
+    },
+    "ActionChoiceFields": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "title": "Actions",
+          "type": "array"
+        },
+        "labels": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Labels"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "actions",
+        "labels"
+      ],
+      "title": "ActionChoiceFields",
+      "type": "object"
+    },
+    "ActionChoiceNode": {
+      "additionalProperties": false,
+      "properties": {
+        "actionChoice": {
+          "$ref": "#/$defs/ActionChoiceFields"
+        }
+      },
+      "required": [
+        "actionChoice"
+      ],
+      "title": "ActionChoiceNode",
+      "type": "object"
+    },
+    "ActionLetFields": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "body"
+      ],
+      "title": "ActionLetFields",
+      "type": "object"
+    },
+    "ActionLetNode": {
+      "additionalProperties": false,
+      "properties": {
+        "actionLet": {
+          "$ref": "#/$defs/ActionLetFields"
+        }
+      },
+      "required": [
+        "actionLet"
+      ],
+      "title": "ActionLetNode",
+      "type": "object"
+    },
+    "AlgebraFields": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "title": "Args",
+          "type": "array"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "op": {
+          "enum": [
+            "add",
+            "sub",
+            "mul",
+            "div",
+            "mod",
+            "pow",
+            "neg",
+            "lt",
+            "le",
+            "gt",
+            "ge",
+            "eq",
+            "ne",
+            "and",
+            "or",
+            "implies",
+            "iff",
+            "not",
+            "union",
+            "intersect",
+            "difference",
+            "cardinality",
+            "subseteq",
+            "flatten",
+            "listConcat",
+            "listSize"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "resultSort": {
+          "$ref": "#/$defs/Sort"
+        }
+      },
+      "required": [
+        "resultSort",
+        "op",
+        "args"
+      ],
+      "title": "AlgebraFields",
+      "type": "object"
+    },
+    "AlgebraNode": {
+      "additionalProperties": false,
+      "properties": {
+        "algebra": {
+          "$ref": "#/$defs/AlgebraFields"
+        }
+      },
+      "required": [
+        "algebra"
+      ],
+      "title": "AlgebraNode",
+      "type": "object"
+    },
+    "AllMapsFields": {
+      "additionalProperties": false,
+      "properties": {
+        "keySet": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "valueSet": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "keySet",
+        "valueSet"
+      ],
+      "title": "AllMapsFields",
+      "type": "object"
+    },
+    "AllMapsNode": {
+      "additionalProperties": false,
+      "properties": {
+        "allMaps": {
+          "$ref": "#/$defs/AllMapsFields"
+        }
+      },
+      "required": [
+        "allMaps"
+      ],
+      "title": "AllMapsNode",
+      "type": "object"
+    },
+    "AllRecordsFields": {
+      "additionalProperties": false,
+      "properties": {
+        "fieldSets": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/Node"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Fieldsets",
+          "type": "array"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Name"
+        }
+      },
+      "required": [
+        "name",
+        "fieldSets"
+      ],
+      "title": "AllRecordsFields",
+      "type": "object"
+    },
+    "AllRecordsNode": {
+      "additionalProperties": false,
+      "properties": {
+        "allRecords": {
+          "$ref": "#/$defs/AllRecordsFields"
+        }
+      },
+      "required": [
+        "allRecords"
+      ],
+      "title": "AllRecordsNode",
+      "type": "object"
+    },
+    "AllSubsetsFields": {
+      "additionalProperties": false,
+      "properties": {
+        "baseSet": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "baseSet"
+      ],
+      "title": "AllSubsetsFields",
+      "type": "object"
+    },
+    "AllSubsetsNode": {
+      "additionalProperties": false,
+      "properties": {
+        "allSubsets": {
+          "$ref": "#/$defs/AllSubsetsFields"
+        }
+      },
+      "required": [
+        "allSubsets"
+      ],
+      "title": "AllSubsetsNode",
+      "type": "object"
+    },
+    "AllTuplesFields": {
+      "additionalProperties": false,
+      "properties": {
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "sets": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "title": "Sets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "sets"
+      ],
+      "title": "AllTuplesFields",
+      "type": "object"
+    },
+    "AllTuplesNode": {
+      "additionalProperties": false,
+      "properties": {
+        "allTuples": {
+          "$ref": "#/$defs/AllTuplesFields"
+        }
+      },
+      "required": [
+        "allTuples"
+      ],
+      "title": "AllTuplesNode",
+      "type": "object"
+    },
+    "AlwaysFields": {
+      "additionalProperties": false,
+      "properties": {
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "subformula": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "subformula"
+      ],
+      "title": "AlwaysFields",
+      "type": "object"
+    },
+    "AlwaysNode": {
+      "additionalProperties": false,
+      "properties": {
+        "always": {
+          "$ref": "#/$defs/AlwaysFields"
+        }
+      },
+      "required": [
+        "always"
+      ],
+      "title": "AlwaysNode",
+      "type": "object"
+    },
+    "AssignFields": {
+      "additionalProperties": false,
+      "properties": {
+        "expr": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "var": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "var",
+        "expr"
+      ],
+      "title": "AssignFields",
+      "type": "object"
+    },
+    "AssignNode": {
+      "additionalProperties": false,
+      "properties": {
+        "assign": {
+          "$ref": "#/$defs/AssignFields"
+        }
+      },
+      "required": [
+        "assign"
+      ],
+      "title": "AssignNode",
+      "type": "object"
+    },
+    "AssumeFields": {
+      "additionalProperties": false,
+      "properties": {
+        "cond": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "cond"
+      ],
+      "title": "AssumeFields",
+      "type": "object"
+    },
+    "AssumeNode": {
+      "additionalProperties": false,
+      "properties": {
+        "assume": {
+          "$ref": "#/$defs/AssumeFields"
+        }
+      },
+      "required": [
+        "assume"
+      ],
+      "title": "AssumeNode",
+      "type": "object"
+    },
+    "BoolLit": {
+      "additionalProperties": false,
+      "properties": {
+        "bool": {
+          "$ref": "#/$defs/BoolLitFields"
+        }
+      },
+      "required": [
+        "bool"
+      ],
+      "title": "BoolLit",
+      "type": "object"
+    },
+    "BoolLitFields": {
+      "additionalProperties": false,
+      "properties": {
+        "b": {
+          "title": "B",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "b"
+      ],
+      "title": "BoolLitFields",
+      "type": "object"
+    },
+    "ChooseFields": {
+      "additionalProperties": false,
+      "properties": {
+        "baseSet": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "predicate": {
+          "$ref": "#/$defs/Node"
+        },
+        "var": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "baseSet",
+        "var",
+        "predicate"
+      ],
+      "title": "ChooseFields",
+      "type": "object"
+    },
+    "ChooseNode": {
+      "additionalProperties": false,
+      "properties": {
+        "choose": {
+          "$ref": "#/$defs/ChooseFields"
+        }
+      },
+      "required": [
+        "choose"
+      ],
+      "title": "ChooseNode",
+      "type": "object"
+    },
+    "Def": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/Node"
+        },
+        "kind": {
+          "enum": [
+            "action",
+            "init",
+            "invariant",
+            "example",
+            "temporal",
+            "coverage",
+            "expr"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "params": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/Sort"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Params",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "params",
+        "body"
+      ],
+      "title": "Def",
+      "type": "object"
+    },
+    "ElemFields": {
+      "additionalProperties": false,
+      "properties": {
+        "elem": {
+          "$ref": "#/$defs/Sort"
+        }
+      },
+      "required": [
+        "elem"
+      ],
+      "title": "ElemFields",
+      "type": "object"
+    },
+    "EnabledFields": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "title": "EnabledFields",
+      "type": "object"
+    },
+    "EnabledNode": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "$ref": "#/$defs/EnabledFields"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "title": "EnabledNode",
+      "type": "object"
+    },
+    "EnumLit": {
+      "additionalProperties": false,
+      "properties": {
+        "enum": {
+          "$ref": "#/$defs/EnumLitFields"
+        }
+      },
+      "required": [
+        "enum"
+      ],
+      "title": "EnumLit",
+      "type": "object"
+    },
+    "EnumLitFields": {
+      "additionalProperties": false,
+      "properties": {
+        "enumName": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Enumname",
+          "type": "string"
+        },
+        "variant": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Variant",
+          "type": "string"
+        }
+      },
+      "required": [
+        "enumName",
+        "variant"
+      ],
+      "title": "EnumLitFields",
+      "type": "object"
+    },
+    "EnumSort": {
+      "additionalProperties": false,
+      "properties": {
+        "enum": {
+          "$ref": "#/$defs/EnumSortFields"
+        }
+      },
+      "required": [
+        "enum"
+      ],
+      "title": "EnumSort",
+      "type": "object"
+    },
+    "EnumSortFields": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "variants": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+            "type": "string"
+          },
+          "title": "Variants",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "variants"
+      ],
+      "title": "EnumSortFields",
+      "type": "object"
+    },
+    "EventuallyFields": {
+      "additionalProperties": false,
+      "properties": {
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "subformula": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "subformula"
+      ],
+      "title": "EventuallyFields",
+      "type": "object"
+    },
+    "EventuallyNode": {
+      "additionalProperties": false,
+      "properties": {
+        "eventually": {
+          "$ref": "#/$defs/EventuallyFields"
+        }
+      },
+      "required": [
+        "eventually"
+      ],
+      "title": "EventuallyNode",
+      "type": "object"
+    },
+    "ExprCallFields": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "title": "Args",
+          "type": "array"
+        },
+        "body": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "opName": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Opname",
+          "type": "string"
+        },
+        "paramNames": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+            "type": "string"
+          },
+          "title": "Paramnames",
+          "type": "array"
+        },
+        "sort": {
+          "$ref": "#/$defs/Sort"
+        }
+      },
+      "required": [
+        "opName",
+        "args",
+        "body",
+        "paramNames",
+        "sort"
+      ],
+      "title": "ExprCallFields",
+      "type": "object"
+    },
+    "ExprCallNode": {
+      "additionalProperties": false,
+      "properties": {
+        "exprCall": {
+          "$ref": "#/$defs/ExprCallFields"
+        }
+      },
+      "required": [
+        "exprCall"
+      ],
+      "title": "ExprCallNode",
+      "type": "object"
+    },
+    "ExtractedAction": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/Node"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "params": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/Sort"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Params",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "params",
+        "body"
+      ],
+      "title": "ExtractedAction",
+      "type": "object"
+    },
+    "FairnessFields": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/Node"
+        },
+        "kind": {
+          "enum": [
+            "weak",
+            "strong"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "stutteringVars": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+            "type": "string"
+          },
+          "title": "Stutteringvars",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "action",
+        "stutteringVars"
+      ],
+      "title": "FairnessFields",
+      "type": "object"
+    },
+    "FairnessNode": {
+      "additionalProperties": false,
+      "properties": {
+        "fairness": {
+          "$ref": "#/$defs/FairnessFields"
+        }
+      },
+      "required": [
+        "fairness"
+      ],
+      "title": "FairnessNode",
+      "type": "object"
+    },
+    "InEFields": {
+      "additionalProperties": false,
+      "properties": {
+        "elem": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "setNode": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "elem",
+        "setNode"
+      ],
+      "title": "InEFields",
+      "type": "object"
+    },
+    "InENode": {
+      "additionalProperties": false,
+      "properties": {
+        "inE": {
+          "$ref": "#/$defs/InEFields"
+        }
+      },
+      "required": [
+        "inE"
+      ],
+      "title": "InENode",
+      "type": "object"
+    },
+    "Instance": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "params": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/Node"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Params",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "params"
+      ],
+      "title": "Instance",
+      "type": "object"
+    },
+    "IntLit": {
+      "additionalProperties": false,
+      "properties": {
+        "int": {
+          "$ref": "#/$defs/IntLitFields"
+        }
+      },
+      "required": [
+        "int"
+      ],
+      "title": "IntLit",
+      "type": "object"
+    },
+    "IntLitFields": {
+      "additionalProperties": false,
+      "properties": {
+        "n": {
+          "title": "N",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "n"
+      ],
+      "title": "IntLitFields",
+      "type": "object"
+    },
+    "IntervalFields": {
+      "additionalProperties": false,
+      "properties": {
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "lower": {
+          "$ref": "#/$defs/Node"
+        },
+        "upper": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "lower",
+        "upper"
+      ],
+      "title": "IntervalFields",
+      "type": "object"
+    },
+    "IntervalNode": {
+      "additionalProperties": false,
+      "properties": {
+        "interval": {
+          "$ref": "#/$defs/IntervalFields"
+        }
+      },
+      "required": [
+        "interval"
+      ],
+      "title": "IntervalNode",
+      "type": "object"
+    },
+    "IteFields": {
+      "additionalProperties": false,
+      "properties": {
+        "condition": {
+          "$ref": "#/$defs/Node"
+        },
+        "elseNode": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "thenNode": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "condition",
+        "thenNode",
+        "elseNode"
+      ],
+      "title": "IteFields",
+      "type": "object"
+    },
+    "IteNode": {
+      "additionalProperties": false,
+      "properties": {
+        "ite": {
+          "$ref": "#/$defs/IteFields"
+        }
+      },
+      "required": [
+        "ite"
+      ],
+      "title": "IteNode",
+      "type": "object"
+    },
+    "LetEFields": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "body"
+      ],
+      "title": "LetEFields",
+      "type": "object"
+    },
+    "LetENode": {
+      "additionalProperties": false,
+      "properties": {
+        "letE": {
+          "$ref": "#/$defs/LetEFields"
+        }
+      },
+      "required": [
+        "letE"
+      ],
+      "title": "LetENode",
+      "type": "object"
+    },
+    "ListEnumFields": {
+      "additionalProperties": false,
+      "properties": {
+        "elemSort": {
+          "$ref": "#/$defs/Sort"
+        },
+        "elements": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "title": "Elements",
+          "type": "array"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "elemSort",
+        "elements"
+      ],
+      "title": "ListEnumFields",
+      "type": "object"
+    },
+    "ListEnumNode": {
+      "additionalProperties": false,
+      "properties": {
+        "listEnum": {
+          "$ref": "#/$defs/ListEnumFields"
+        }
+      },
+      "required": [
+        "listEnum"
+      ],
+      "title": "ListEnumNode",
+      "type": "object"
+    },
+    "ListFilterFields": {
+      "additionalProperties": false,
+      "properties": {
+        "baseList": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "predicate": {
+          "$ref": "#/$defs/Node"
+        },
+        "var": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "baseList",
+        "var",
+        "predicate"
+      ],
+      "title": "ListFilterFields",
+      "type": "object"
+    },
+    "ListFilterNode": {
+      "additionalProperties": false,
+      "properties": {
+        "listFilter": {
+          "$ref": "#/$defs/ListFilterFields"
+        }
+      },
+      "required": [
+        "listFilter"
+      ],
+      "title": "ListFilterNode",
+      "type": "object"
+    },
+    "ListGetFields": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "$ref": "#/$defs/Node"
+        },
+        "listNode": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "listNode",
+        "index"
+      ],
+      "title": "ListGetFields",
+      "type": "object"
+    },
+    "ListGetNode": {
+      "additionalProperties": false,
+      "properties": {
+        "listGet": {
+          "$ref": "#/$defs/ListGetFields"
+        }
+      },
+      "required": [
+        "listGet"
+      ],
+      "title": "ListGetNode",
+      "type": "object"
+    },
+    "ListKeysFields": {
+      "additionalProperties": false,
+      "properties": {
+        "listNode": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "listNode"
+      ],
+      "title": "ListKeysFields",
+      "type": "object"
+    },
+    "ListKeysNode": {
+      "additionalProperties": false,
+      "properties": {
+        "listKeys": {
+          "$ref": "#/$defs/ListKeysFields"
+        }
+      },
+      "required": [
+        "listKeys"
+      ],
+      "title": "ListKeysNode",
+      "type": "object"
+    },
+    "ListRangeFields": {
+      "additionalProperties": false,
+      "properties": {
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "lower": {
+          "$ref": "#/$defs/Node"
+        },
+        "upper": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "lower",
+        "upper"
+      ],
+      "title": "ListRangeFields",
+      "type": "object"
+    },
+    "ListRangeNode": {
+      "additionalProperties": false,
+      "properties": {
+        "listRange": {
+          "$ref": "#/$defs/ListRangeFields"
+        }
+      },
+      "required": [
+        "listRange"
+      ],
+      "title": "ListRangeNode",
+      "type": "object"
+    },
+    "ListReduceFields": {
+      "additionalProperties": false,
+      "properties": {
+        "accVar": {
+          "$ref": "#/$defs/Node"
+        },
+        "baseList": {
+          "$ref": "#/$defs/Node"
+        },
+        "elemVar": {
+          "$ref": "#/$defs/Node"
+        },
+        "func": {
+          "$ref": "#/$defs/Node"
+        },
+        "initial": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "baseList",
+        "accVar",
+        "elemVar",
+        "func",
+        "initial"
+      ],
+      "title": "ListReduceFields",
+      "type": "object"
+    },
+    "ListReduceNode": {
+      "additionalProperties": false,
+      "properties": {
+        "listReduce": {
+          "$ref": "#/$defs/ListReduceFields"
+        }
+      },
+      "required": [
+        "listReduce"
+      ],
+      "title": "ListReduceNode",
+      "type": "object"
+    },
+    "ListSliceFields": {
+      "additionalProperties": false,
+      "properties": {
+        "baseList": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "start": {
+          "$ref": "#/$defs/Node"
+        },
+        "stop": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "baseList",
+        "start",
+        "stop"
+      ],
+      "title": "ListSliceFields",
+      "type": "object"
+    },
+    "ListSliceNode": {
+      "additionalProperties": false,
+      "properties": {
+        "listSlice": {
+          "$ref": "#/$defs/ListSliceFields"
+        }
+      },
+      "required": [
+        "listSlice"
+      ],
+      "title": "ListSliceNode",
+      "type": "object"
+    },
+    "ListSort": {
+      "additionalProperties": false,
+      "properties": {
+        "list": {
+          "$ref": "#/$defs/ElemFields"
+        }
+      },
+      "required": [
+        "list"
+      ],
+      "title": "ListSort",
+      "type": "object"
+    },
+    "ListUpdateFields": {
+      "additionalProperties": false,
+      "properties": {
+        "baseList": {
+          "$ref": "#/$defs/Node"
+        },
+        "index": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "newValue": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "baseList",
+        "index",
+        "newValue"
+      ],
+      "title": "ListUpdateFields",
+      "type": "object"
+    },
+    "ListUpdateNode": {
+      "additionalProperties": false,
+      "properties": {
+        "listUpdate": {
+          "$ref": "#/$defs/ListUpdateFields"
+        }
+      },
+      "required": [
+        "listUpdate"
+      ],
+      "title": "ListUpdateNode",
+      "type": "object"
+    },
+    "Lit": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/BoolLit"
+        },
+        {
+          "$ref": "#/$defs/IntLit"
+        },
+        {
+          "$ref": "#/$defs/StrLit"
+        },
+        {
+          "$ref": "#/$defs/EnumLit"
+        }
+      ]
+    },
+    "LitFields": {
+      "additionalProperties": false,
+      "properties": {
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "value": {
+          "$ref": "#/$defs/Lit"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "LitFields",
+      "type": "object"
+    },
+    "LitNode": {
+      "additionalProperties": false,
+      "properties": {
+        "lit": {
+          "$ref": "#/$defs/LitFields"
+        }
+      },
+      "required": [
+        "lit"
+      ],
+      "title": "LitNode",
+      "type": "object"
+    },
+    "MapEnumFields": {
+      "additionalProperties": false,
+      "properties": {
+        "keySort": {
+          "$ref": "#/$defs/Sort"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "mappings": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/Node"
+              },
+              {
+                "$ref": "#/$defs/Node"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Mappings",
+          "type": "array"
+        },
+        "valueSort": {
+          "$ref": "#/$defs/Sort"
+        }
+      },
+      "required": [
+        "keySort",
+        "valueSort",
+        "mappings"
+      ],
+      "title": "MapEnumFields",
+      "type": "object"
+    },
+    "MapEnumNode": {
+      "additionalProperties": false,
+      "properties": {
+        "mapEnum": {
+          "$ref": "#/$defs/MapEnumFields"
+        }
+      },
+      "required": [
+        "mapEnum"
+      ],
+      "title": "MapEnumNode",
+      "type": "object"
+    },
+    "MapGetFields": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "mapNode": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "mapNode",
+        "key"
+      ],
+      "title": "MapGetFields",
+      "type": "object"
+    },
+    "MapGetNode": {
+      "additionalProperties": false,
+      "properties": {
+        "mapGet": {
+          "$ref": "#/$defs/MapGetFields"
+        }
+      },
+      "required": [
+        "mapGet"
+      ],
+      "title": "MapGetNode",
+      "type": "object"
+    },
+    "MapKeysFields": {
+      "additionalProperties": false,
+      "properties": {
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "mapNode": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "mapNode"
+      ],
+      "title": "MapKeysFields",
+      "type": "object"
+    },
+    "MapKeysNode": {
+      "additionalProperties": false,
+      "properties": {
+        "mapKeys": {
+          "$ref": "#/$defs/MapKeysFields"
+        }
+      },
+      "required": [
+        "mapKeys"
+      ],
+      "title": "MapKeysNode",
+      "type": "object"
+    },
+    "MapLambdaFields": {
+      "additionalProperties": false,
+      "properties": {
+        "baseSet": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "mapper": {
+          "$ref": "#/$defs/Node"
+        },
+        "var": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "baseSet",
+        "var",
+        "mapper"
+      ],
+      "title": "MapLambdaFields",
+      "type": "object"
+    },
+    "MapLambdaNode": {
+      "additionalProperties": false,
+      "properties": {
+        "mapLambda": {
+          "$ref": "#/$defs/MapLambdaFields"
+        }
+      },
+      "required": [
+        "mapLambda"
+      ],
+      "title": "MapLambdaNode",
+      "type": "object"
+    },
+    "MapSetFields": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "mapNode": {
+          "$ref": "#/$defs/Node"
+        },
+        "replaceOnly": {
+          "title": "Replaceonly",
+          "type": "boolean"
+        },
+        "value": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "mapNode",
+        "key",
+        "value",
+        "replaceOnly"
+      ],
+      "title": "MapSetFields",
+      "type": "object"
+    },
+    "MapSetNode": {
+      "additionalProperties": false,
+      "properties": {
+        "mapSet": {
+          "$ref": "#/$defs/MapSetFields"
+        }
+      },
+      "required": [
+        "mapSet"
+      ],
+      "title": "MapSetNode",
+      "type": "object"
+    },
+    "MapSort": {
+      "additionalProperties": false,
+      "properties": {
+        "map": {
+          "$ref": "#/$defs/MapSortFields"
+        }
+      },
+      "required": [
+        "map"
+      ],
+      "title": "MapSort",
+      "type": "object"
+    },
+    "MapSortFields": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/Sort"
+        },
+        "val": {
+          "$ref": "#/$defs/Sort"
+        }
+      },
+      "required": [
+        "key",
+        "val"
+      ],
+      "title": "MapSortFields",
+      "type": "object"
+    },
+    "Node": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/VarNode"
+        },
+        {
+          "$ref": "#/$defs/LitNode"
+        },
+        {
+          "$ref": "#/$defs/LetENode"
+        },
+        {
+          "$ref": "#/$defs/ExprCallNode"
+        },
+        {
+          "$ref": "#/$defs/AlgebraNode"
+        },
+        {
+          "$ref": "#/$defs/InENode"
+        },
+        {
+          "$ref": "#/$defs/IteNode"
+        },
+        {
+          "$ref": "#/$defs/SetEnumNode"
+        },
+        {
+          "$ref": "#/$defs/SetIntOrNatNode"
+        },
+        {
+          "$ref": "#/$defs/SetFilterNode"
+        },
+        {
+          "$ref": "#/$defs/SetMapNode"
+        },
+        {
+          "$ref": "#/$defs/SetQuantNode"
+        },
+        {
+          "$ref": "#/$defs/SetReduceNode"
+        },
+        {
+          "$ref": "#/$defs/IntervalNode"
+        },
+        {
+          "$ref": "#/$defs/ChooseNode"
+        },
+        {
+          "$ref": "#/$defs/AllSubsetsNode"
+        },
+        {
+          "$ref": "#/$defs/AllMapsNode"
+        },
+        {
+          "$ref": "#/$defs/AllTuplesNode"
+        },
+        {
+          "$ref": "#/$defs/AllRecordsNode"
+        },
+        {
+          "$ref": "#/$defs/MapEnumNode"
+        },
+        {
+          "$ref": "#/$defs/MapLambdaNode"
+        },
+        {
+          "$ref": "#/$defs/MapGetNode"
+        },
+        {
+          "$ref": "#/$defs/MapSetNode"
+        },
+        {
+          "$ref": "#/$defs/MapKeysNode"
+        },
+        {
+          "$ref": "#/$defs/ListEnumNode"
+        },
+        {
+          "$ref": "#/$defs/ListRangeNode"
+        },
+        {
+          "$ref": "#/$defs/ListGetNode"
+        },
+        {
+          "$ref": "#/$defs/ListUpdateNode"
+        },
+        {
+          "$ref": "#/$defs/ListSliceNode"
+        },
+        {
+          "$ref": "#/$defs/ListFilterNode"
+        },
+        {
+          "$ref": "#/$defs/ListReduceNode"
+        },
+        {
+          "$ref": "#/$defs/ListKeysNode"
+        },
+        {
+          "$ref": "#/$defs/RecordCtorNode"
+        },
+        {
+          "$ref": "#/$defs/RecordUpdateNode"
+        },
+        {
+          "$ref": "#/$defs/RecordGetNode"
+        },
+        {
+          "$ref": "#/$defs/TupleCtorNode"
+        },
+        {
+          "$ref": "#/$defs/TupleUpdateNode"
+        },
+        {
+          "$ref": "#/$defs/TupleGetNode"
+        },
+        {
+          "$ref": "#/$defs/UnionCtorNode"
+        },
+        {
+          "$ref": "#/$defs/UnionGetTagNode"
+        },
+        {
+          "$ref": "#/$defs/UnionMatchNode"
+        },
+        {
+          "$ref": "#/$defs/AssumeNode"
+        },
+        {
+          "$ref": "#/$defs/AssignNode"
+        },
+        {
+          "$ref": "#/$defs/NondetChoiceNode"
+        },
+        {
+          "$ref": "#/$defs/ActionChoiceNode"
+        },
+        {
+          "$ref": "#/$defs/ActionAndNode"
+        },
+        {
+          "$ref": "#/$defs/ActionCallNode"
+        },
+        {
+          "$ref": "#/$defs/ActionLetNode"
+        },
+        {
+          "$ref": "#/$defs/ToTemporalNode"
+        },
+        {
+          "$ref": "#/$defs/AlwaysNode"
+        },
+        {
+          "$ref": "#/$defs/EventuallyNode"
+        },
+        {
+          "$ref": "#/$defs/EnabledNode"
+        },
+        {
+          "$ref": "#/$defs/FairnessNode"
+        }
+      ]
+    },
+    "NondetChoiceFields": {
+      "additionalProperties": false,
+      "properties": {
+        "baseSet": {
+          "$ref": "#/$defs/Node"
+        },
+        "body": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "var": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "var",
+        "baseSet",
+        "body"
+      ],
+      "title": "NondetChoiceFields",
+      "type": "object"
+    },
+    "NondetChoiceNode": {
+      "additionalProperties": false,
+      "properties": {
+        "nondetChoice": {
+          "$ref": "#/$defs/NondetChoiceFields"
+        }
+      },
+      "required": [
+        "nondetChoice"
+      ],
+      "title": "NondetChoiceNode",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "Producer",
+      "type": "object"
+    },
+    "RecordCtorFields": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/Node"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Fields",
+          "type": "array"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Name"
+        }
+      },
+      "required": [
+        "name",
+        "fields"
+      ],
+      "title": "RecordCtorFields",
+      "type": "object"
+    },
+    "RecordCtorNode": {
+      "additionalProperties": false,
+      "properties": {
+        "recordCtor": {
+          "$ref": "#/$defs/RecordCtorFields"
+        }
+      },
+      "required": [
+        "recordCtor"
+      ],
+      "title": "RecordCtorNode",
+      "type": "object"
+    },
+    "RecordGetFields": {
+      "additionalProperties": false,
+      "properties": {
+        "fieldName": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Fieldname",
+          "type": "string"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "recordNode": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "recordNode",
+        "fieldName"
+      ],
+      "title": "RecordGetFields",
+      "type": "object"
+    },
+    "RecordGetNode": {
+      "additionalProperties": false,
+      "properties": {
+        "recordGet": {
+          "$ref": "#/$defs/RecordGetFields"
+        }
+      },
+      "required": [
+        "recordGet"
+      ],
+      "title": "RecordGetNode",
+      "type": "object"
+    },
+    "RecordSort": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/RecordSortFields"
+        }
+      },
+      "required": [
+        "record"
+      ],
+      "title": "RecordSort",
+      "type": "object"
+    },
+    "RecordSortFields": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/Sort"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Fields",
+          "type": "array"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Name"
+        }
+      },
+      "required": [
+        "name",
+        "fields"
+      ],
+      "title": "RecordSortFields",
+      "type": "object"
+    },
+    "RecordUpdateFields": {
+      "additionalProperties": false,
+      "properties": {
+        "baseRecord": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "updates": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/Node"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Updates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "baseRecord",
+        "updates"
+      ],
+      "title": "RecordUpdateFields",
+      "type": "object"
+    },
+    "RecordUpdateNode": {
+      "additionalProperties": false,
+      "properties": {
+        "recordUpdate": {
+          "$ref": "#/$defs/RecordUpdateFields"
+        }
+      },
+      "required": [
+        "recordUpdate"
+      ],
+      "title": "RecordUpdateNode",
+      "type": "object"
+    },
+    "SetEnumFields": {
+      "additionalProperties": false,
+      "properties": {
+        "elemSort": {
+          "$ref": "#/$defs/Sort"
+        },
+        "elements": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "title": "Elements",
+          "type": "array"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "elemSort",
+        "elements"
+      ],
+      "title": "SetEnumFields",
+      "type": "object"
+    },
+    "SetEnumNode": {
+      "additionalProperties": false,
+      "properties": {
+        "setEnum": {
+          "$ref": "#/$defs/SetEnumFields"
+        }
+      },
+      "required": [
+        "setEnum"
+      ],
+      "title": "SetEnumNode",
+      "type": "object"
+    },
+    "SetFilterFields": {
+      "additionalProperties": false,
+      "properties": {
+        "bindings": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/Node"
+              },
+              {
+                "$ref": "#/$defs/Node"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Bindings",
+          "type": "array"
+        },
+        "body": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "bindings",
+        "body"
+      ],
+      "title": "SetFilterFields",
+      "type": "object"
+    },
+    "SetFilterNode": {
+      "additionalProperties": false,
+      "properties": {
+        "setFilter": {
+          "$ref": "#/$defs/SetFilterFields"
+        }
+      },
+      "required": [
+        "setFilter"
+      ],
+      "title": "SetFilterNode",
+      "type": "object"
+    },
+    "SetIntOrNatFields": {
+      "additionalProperties": false,
+      "properties": {
+        "isSigned": {
+          "title": "Issigned",
+          "type": "boolean"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "isSigned"
+      ],
+      "title": "SetIntOrNatFields",
+      "type": "object"
+    },
+    "SetIntOrNatNode": {
+      "additionalProperties": false,
+      "properties": {
+        "setIntOrNat": {
+          "$ref": "#/$defs/SetIntOrNatFields"
+        }
+      },
+      "required": [
+        "setIntOrNat"
+      ],
+      "title": "SetIntOrNatNode",
+      "type": "object"
+    },
+    "SetMapFields": {
+      "additionalProperties": false,
+      "properties": {
+        "bindings": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/Node"
+              },
+              {
+                "$ref": "#/$defs/Node"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Bindings",
+          "type": "array"
+        },
+        "body": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "bindings",
+        "body"
+      ],
+      "title": "SetMapFields",
+      "type": "object"
+    },
+    "SetMapNode": {
+      "additionalProperties": false,
+      "properties": {
+        "setMap": {
+          "$ref": "#/$defs/SetMapFields"
+        }
+      },
+      "required": [
+        "setMap"
+      ],
+      "title": "SetMapNode",
+      "type": "object"
+    },
+    "SetQuantFields": {
+      "additionalProperties": false,
+      "properties": {
+        "bindings": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/Node"
+              },
+              {
+                "$ref": "#/$defs/Node"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Bindings",
+          "type": "array"
+        },
+        "body": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "quant": {
+          "enum": [
+            "forall",
+            "exists"
+          ],
+          "title": "Quant",
+          "type": "string"
+        },
+        "sort": {
+          "$ref": "#/$defs/Sort"
+        }
+      },
+      "required": [
+        "quant",
+        "bindings",
+        "body",
+        "sort"
+      ],
+      "title": "SetQuantFields",
+      "type": "object"
+    },
+    "SetQuantNode": {
+      "additionalProperties": false,
+      "properties": {
+        "setQuant": {
+          "$ref": "#/$defs/SetQuantFields"
+        }
+      },
+      "required": [
+        "setQuant"
+      ],
+      "title": "SetQuantNode",
+      "type": "object"
+    },
+    "SetReduceFields": {
+      "additionalProperties": false,
+      "properties": {
+        "accVar": {
+          "$ref": "#/$defs/Node"
+        },
+        "baseSet": {
+          "$ref": "#/$defs/Node"
+        },
+        "elemVar": {
+          "$ref": "#/$defs/Node"
+        },
+        "func": {
+          "$ref": "#/$defs/Node"
+        },
+        "initial": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "baseSet",
+        "accVar",
+        "elemVar",
+        "func",
+        "initial"
+      ],
+      "title": "SetReduceFields",
+      "type": "object"
+    },
+    "SetReduceNode": {
+      "additionalProperties": false,
+      "properties": {
+        "setReduce": {
+          "$ref": "#/$defs/SetReduceFields"
+        }
+      },
+      "required": [
+        "setReduce"
+      ],
+      "title": "SetReduceNode",
+      "type": "object"
+    },
+    "SetSort": {
+      "additionalProperties": false,
+      "properties": {
+        "set": {
+          "$ref": "#/$defs/ElemFields"
+        }
+      },
+      "required": [
+        "set"
+      ],
+      "title": "SetSort",
+      "type": "object"
+    },
+    "Sort": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/EnumSort"
+        },
+        {
+          "$ref": "#/$defs/SetSort"
+        },
+        {
+          "$ref": "#/$defs/ListSort"
+        },
+        {
+          "$ref": "#/$defs/MapSort"
+        },
+        {
+          "$ref": "#/$defs/TupleSort"
+        },
+        {
+          "$ref": "#/$defs/RecordSort"
+        },
+        {
+          "$ref": "#/$defs/UnionSort"
+        },
+        {
+          "enum": [
+            "int",
+            "bool",
+            "str",
+            "action",
+            "temporal"
+          ],
+          "type": "string"
+        }
+      ]
+    },
+    "Spec": {
+      "additionalProperties": false,
+      "properties": {
+        "defs": {
+          "items": {
+            "$ref": "#/$defs/Def"
+          },
+          "title": "Defs",
+          "type": "array"
+        },
+        "extractedActions": {
+          "items": {
+            "$ref": "#/$defs/ExtractedAction"
+          },
+          "title": "Extractedactions",
+          "type": "array"
+        },
+        "instances": {
+          "items": {
+            "$ref": "#/$defs/Instance"
+          },
+          "title": "Instances",
+          "type": "array"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "operatorComments": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "maxLength": 4096,
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Operatorcomments",
+          "type": "array"
+        },
+        "params": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/Sort"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Params",
+          "type": "array"
+        },
+        "pureExprs": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+            "type": "string"
+          },
+          "title": "Pureexprs",
+          "type": "array"
+        },
+        "stateVars": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/Sort"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Statevars",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "params",
+        "stateVars",
+        "defs",
+        "extractedActions",
+        "instances",
+        "pureExprs",
+        "operatorComments"
+      ],
+      "title": "Spec",
+      "type": "object"
+    },
+    "StrLit": {
+      "additionalProperties": false,
+      "properties": {
+        "str": {
+          "$ref": "#/$defs/StrLitFields"
+        }
+      },
+      "required": [
+        "str"
+      ],
+      "title": "StrLit",
+      "type": "object"
+    },
+    "StrLitFields": {
+      "additionalProperties": false,
+      "properties": {
+        "s": {
+          "title": "S",
+          "type": "string"
+        }
+      },
+      "required": [
+        "s"
+      ],
+      "title": "StrLitFields",
+      "type": "object"
+    },
+    "ToTemporalFields": {
+      "additionalProperties": false,
+      "properties": {
+        "boolFormula": {
+          "$ref": "#/$defs/Node"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "boolFormula"
+      ],
+      "title": "ToTemporalFields",
+      "type": "object"
+    },
+    "ToTemporalNode": {
+      "additionalProperties": false,
+      "properties": {
+        "toTemporal": {
+          "$ref": "#/$defs/ToTemporalFields"
+        }
+      },
+      "required": [
+        "toTemporal"
+      ],
+      "title": "ToTemporalNode",
+      "type": "object"
+    },
+    "TupleCtorFields": {
+      "additionalProperties": false,
+      "properties": {
+        "elements": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "title": "Elements",
+          "type": "array"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        }
+      },
+      "required": [
+        "elements"
+      ],
+      "title": "TupleCtorFields",
+      "type": "object"
+    },
+    "TupleCtorNode": {
+      "additionalProperties": false,
+      "properties": {
+        "tupleCtor": {
+          "$ref": "#/$defs/TupleCtorFields"
+        }
+      },
+      "required": [
+        "tupleCtor"
+      ],
+      "title": "TupleCtorNode",
+      "type": "object"
+    },
+    "TupleGetFields": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "tupleNode": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "tupleNode",
+        "index"
+      ],
+      "title": "TupleGetFields",
+      "type": "object"
+    },
+    "TupleGetNode": {
+      "additionalProperties": false,
+      "properties": {
+        "tupleGet": {
+          "$ref": "#/$defs/TupleGetFields"
+        }
+      },
+      "required": [
+        "tupleGet"
+      ],
+      "title": "TupleGetNode",
+      "type": "object"
+    },
+    "TupleSort": {
+      "additionalProperties": false,
+      "properties": {
+        "tuple": {
+          "$ref": "#/$defs/TupleSortFields"
+        }
+      },
+      "required": [
+        "tuple"
+      ],
+      "title": "TupleSort",
+      "type": "object"
+    },
+    "TupleSortFields": {
+      "additionalProperties": false,
+      "properties": {
+        "elems": {
+          "items": {
+            "$ref": "#/$defs/Sort"
+          },
+          "title": "Elems",
+          "type": "array"
+        }
+      },
+      "required": [
+        "elems"
+      ],
+      "title": "TupleSortFields",
+      "type": "object"
+    },
+    "TupleUpdateFields": {
+      "additionalProperties": false,
+      "properties": {
+        "baseTuple": {
+          "$ref": "#/$defs/Node"
+        },
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "newValue": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "baseTuple",
+        "index",
+        "newValue"
+      ],
+      "title": "TupleUpdateFields",
+      "type": "object"
+    },
+    "TupleUpdateNode": {
+      "additionalProperties": false,
+      "properties": {
+        "tupleUpdate": {
+          "$ref": "#/$defs/TupleUpdateFields"
+        }
+      },
+      "required": [
+        "tupleUpdate"
+      ],
+      "title": "TupleUpdateNode",
+      "type": "object"
+    },
+    "UnionCtorFields": {
+      "additionalProperties": false,
+      "properties": {
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "payload": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Node"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tag": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Tag",
+          "type": "string"
+        },
+        "unionSort": {
+          "$ref": "#/$defs/Sort"
+        }
+      },
+      "required": [
+        "unionSort",
+        "tag",
+        "payload"
+      ],
+      "title": "UnionCtorFields",
+      "type": "object"
+    },
+    "UnionCtorNode": {
+      "additionalProperties": false,
+      "properties": {
+        "unionCtor": {
+          "$ref": "#/$defs/UnionCtorFields"
+        }
+      },
+      "required": [
+        "unionCtor"
+      ],
+      "title": "UnionCtorNode",
+      "type": "object"
+    },
+    "UnionGetTagFields": {
+      "additionalProperties": false,
+      "properties": {
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "unionNode": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "unionNode"
+      ],
+      "title": "UnionGetTagFields",
+      "type": "object"
+    },
+    "UnionGetTagNode": {
+      "additionalProperties": false,
+      "properties": {
+        "unionGetTag": {
+          "$ref": "#/$defs/UnionGetTagFields"
+        }
+      },
+      "required": [
+        "unionGetTag"
+      ],
+      "title": "UnionGetTagNode",
+      "type": "object"
+    },
+    "UnionMatchFields": {
+      "additionalProperties": false,
+      "properties": {
+        "cases": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "anyOf": [
+                      {
+                        "$ref": "#/$defs/Node"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "$ref": "#/$defs/Node"
+                  }
+                ],
+                "type": "array"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Cases",
+          "type": "array"
+        },
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "unionNode": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "unionNode",
+        "cases"
+      ],
+      "title": "UnionMatchFields",
+      "type": "object"
+    },
+    "UnionMatchNode": {
+      "additionalProperties": false,
+      "properties": {
+        "unionMatch": {
+          "$ref": "#/$defs/UnionMatchFields"
+        }
+      },
+      "required": [
+        "unionMatch"
+      ],
+      "title": "UnionMatchNode",
+      "type": "object"
+    },
+    "UnionSort": {
+      "additionalProperties": false,
+      "properties": {
+        "union": {
+          "$ref": "#/$defs/UnionSortFields"
+        }
+      },
+      "required": [
+        "union"
+      ],
+      "title": "UnionSort",
+      "type": "object"
+    },
+    "UnionSortFields": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Name"
+        },
+        "variants": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "type": "string"
+              },
+              {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Sort"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Variants",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "variants"
+      ],
+      "title": "UnionSortFields",
+      "type": "object"
+    },
+    "VarFields": {
+      "additionalProperties": false,
+      "properties": {
+        "loc": {
+          "anyOf": [
+            {
+              "maxItems": 5,
+              "minItems": 5,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loc"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sort": {
+          "$ref": "#/$defs/Sort"
+        },
+        "uniqueName": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uniquename"
+        }
+      },
+      "required": [
+        "name",
+        "sort",
+        "uniqueName"
+      ],
+      "title": "VarFields",
+      "type": "object"
+    },
+    "VarNode": {
+      "additionalProperties": false,
+      "properties": {
+        "var": {
+          "$ref": "#/$defs/VarFields"
+        }
+      },
+      "required": [
+        "var"
+      ],
+      "title": "VarNode",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "files": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Files",
+      "type": "array"
+    },
+    "format": {
+      "const": "wunderspec-transfer",
+      "title": "Format",
+      "type": "string"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "spec": {
+      "$ref": "#/$defs/Spec"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "producer",
+    "files",
+    "spec"
+  ],
+  "title": "Wunderspec Transfer Format 1.0",
+  "type": "object"
+}

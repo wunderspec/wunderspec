@@ -226,3 +226,6 @@ demos/jupyterlite/site/lite/
 **/corpus/*
 /.venv-graalpy
 /coverage.json
+
+# Versioned transfer trust-boundary fixtures
+!tests/transfer/corpus/*

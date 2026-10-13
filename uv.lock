@@ -1781,7 +1781,7 @@ wheels = [
 
 [[package]]
 name = "wunderspec"
-version = "0.137.3"
+version = "0.141.1"
 source = { editable = "." }
 dependencies = [
     { name = "executing" },
@@ -1806,6 +1806,7 @@ dev = [
     { name = "flake8" },
     { name = "hypothesis" },
     { name = "isort" },
+    { name = "jsonschema" },
     { name = "markdown-pytest" },
     { name = "mypy" },
     { name = "pyright" },
@@ -1838,6 +1839,7 @@ dev = [
     { name = "flake8", specifier = ">=7.0.0,<8.0.0" },
     { name = "hypothesis", specifier = ">=6.151.2,<7.0.0" },
     { name = "isort", specifier = ">=5.0.0,<6.0.0" },
+    { name = "jsonschema", specifier = ">=4.26,<5" },
     { name = "markdown-pytest", specifier = ">=0.3.2,<0.4.0" },
     { name = "mypy", specifier = ">=1.0.0,<2.0.0" },
     { name = "pyright", specifier = ">=1.1.400,<2.0.0" },

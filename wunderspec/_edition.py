@@ -7,7 +7,7 @@ EDITION = "open-core"
 PREMIUM_FEATURES = {
     "fuzz": "Wunderspec fuzzing is available in Wunderspec Premium.",
     "lean": "Lean translation is available in Wunderspec Premium.",
-    "rust": "Rust translation is available in Wunderspec Premium.",
+    "rust": "Rust translation requires a Wunderspec SaaS token.",
 }
 
 DISABLED_FEATURES: frozenset[str] = frozenset({"fuzz"})

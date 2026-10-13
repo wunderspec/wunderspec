@@ -2,13 +2,13 @@
 
 The unit tests from the Wunderspec development repository are omitted from this
 public distribution to keep the package focused. The full development
-`make test` suite currently collects 2541 tests.
+`make test` suite currently collects 3176 tests.
 
 ## Release Provenance
 
-- Release tag: `v0.137.3`
-- Source commit: `be86a4dd5da2668b37f5287a80ab13ef025b645c`
-- Test log captured at: `2026-10-05T12:42:59Z`
+- Release tag: `v0.141.1`
+- Source commit: `6b9cd1dbbaccadc5846db03082e7a9b39868bcfb`
+- Test log captured at: `2026-10-13T20:43:23Z`
 - `make test` exit code: `0`
 
 ## Full Test Log From the Development Repository
@@ -16,11 +16,11 @@ public distribution to keep the package focused. The full development
 ```text
 cd . && uv run pytest
 ============================= test session starts ==============================
-platform linux -- Python 3.12.14, pytest-8.4.2, pluggy-1.6.0
+platform linux -- Python 3.12.15, pytest-8.4.2, pluggy-1.6.0
 rootdir: /home/runner/work/wunderspec-dev/wunderspec-dev/release-source
 configfile: pyproject.toml
 plugins: subtests-0.15.0, pytest_codeblocks-0.17.0, markdown-pytest-0.3.2, hypothesis-6.155.2, cov-6.3.0
-collected 2541 items
+collected 3176 items
 
 docs/user-references/booleans.md .                                       [  0%]
 docs/user-references/comprehensions.md .                                 [  0%]
@@ -35,184 +35,227 @@ docs/user-references/sets.md .                                           [  0%]
 docs/user-references/state-machine.md .                                  [  0%]
 docs/user-references/strings.md .                                        [  0%]
 docs/user-references/temporal.md .                                       [  0%]
+docs/user-references/transfer.md .                                       [  0%]
 docs/user-references/tuples.md .                                         [  0%]
 docs/user-references/unions.md .                                         [  0%]
 examples/test_simple_ponzi_machine.py ..                                 [  0%]
-tests/test_action_coercion.py ..                                         [  0%]
-tests/test_action_execute.py ..........                                  [  1%]
-tests/test_action_profile.py ...............                             [  1%]
-tests/test_api.py .......s..s........................................... [  3%]
-..........................                                               [  4%]
-tests/test_ast_properties.py ..................                          [  5%]
-tests/test_ast_record.py ...................................             [  6%]
-tests/test_ast_terms.py ................................................ [  8%]
-....................................................                     [ 10%]
-tests/test_ast_tuple.py .................................                [ 12%]
-tests/test_cache.py .............................                        [ 13%]
-tests/test_cli.py ...................................................... [ 15%]
-........sssssss......................................................... [ 18%]
-                                                                         [ 18%]
-tests/test_conditional.py ..............                                 [ 18%]
-tests/test_direct_pc_examples.py .                                       [ 18%]
-tests/test_enabled_eval.py ............                                  [ 19%]
-tests/test_exec_context.py .................                             [ 20%]
-tests/test_exec_context_complex.py ......                                [ 20%]
-tests/test_expr_maintenance.py .................                         [ 20%]
-tests/test_expr_update.py ................                               [ 21%]
-tests/test_flow.py ............................                          [ 22%]
-tests/test_from_python.py .............................................  [ 24%]
-tests/test_fuzzer.py ................................                    [ 25%]
-tests/test_generator_exprs.py .........................................  [ 27%]
-tests/test_interpreter_booleans.py ..................................... [ 28%]
-...                                                                      [ 28%]
-tests/test_interpreter_enums.py ...............                          [ 29%]
-tests/test_interpreter_errors.py ....                                    [ 29%]
-tests/test_interpreter_integers.py ..................................... [ 31%]
-.................                                                        [ 31%]
-tests/test_interpreter_let.py ..............                             [ 32%]
-tests/test_interpreter_lists.py ........................................ [ 33%]
-...................................................................      [ 36%]
+tests/remote/test_config.py ............................................ [  1%]
+..                                                                       [  2%]
+tests/remote/test_rust_cli.py ....................................       [  3%]
+tests/remote/test_unpack.py ...........................                  [  3%]
+tests/rust_cli/test_build.py .......                                     [  4%]
+tests/rust_cli/test_cache_core.py ..................                     [  4%]
+tests/rust_cli/test_cache_robustness.py ...........                      [  5%]
+tests/rust_cli/test_commands_compile.py ...........                      [  5%]
+tests/rust_cli/test_commands_replay.py ....                              [  5%]
+tests/rust_cli/test_commands_reuse.py .........                          [  5%]
+tests/rust_cli/test_commands_run.py .................                    [  6%]
+tests/rust_cli/test_commands_skew.py ..                                  [  6%]
+tests/rust_cli/test_driver.py ...................................        [  7%]
+tests/rust_cli/test_exits.py ...                                         [  7%]
+tests/rust_cli/test_help.py ..............                               [  8%]
+tests/rust_cli/test_instances.py .........                               [  8%]
+tests/rust_cli/test_option_inventory.py ...                              [  8%]
+tests/rust_cli/test_options.py .........                                 [  8%]
+tests/test_action_coercion.py ..                                         [  8%]
+tests/test_action_execute.py ..........                                  [  9%]
+tests/test_action_profile.py ...............                             [  9%]
+tests/test_api.py .......s..s........................................... [ 11%]
+..........................                                               [ 12%]
+tests/test_ast_properties.py ..................                          [ 12%]
+tests/test_ast_record.py ...................................             [ 13%]
+tests/test_ast_terms.py ................................................ [ 15%]
+....................................................                     [ 16%]
+tests/test_ast_tuple.py .................................                [ 18%]
+tests/test_cache.py .............................                        [ 18%]
+tests/test_cli.py ...................................................... [ 20%]
+........sssssss......................................................... [ 22%]
+                                                                         [ 22%]
+tests/test_conditional.py ..............                                 [ 23%]
+tests/test_direct_pc_examples.py .                                       [ 23%]
+tests/test_enabled_eval.py ............                                  [ 23%]
+tests/test_exec_context.py .................                             [ 24%]
+tests/test_exec_context_complex.py ......                                [ 24%]
+tests/test_expr_maintenance.py .................                         [ 25%]
+tests/test_expr_update.py ................                               [ 25%]
+tests/test_flow.py ............................                          [ 26%]
+tests/test_from_python.py .............................................  [ 27%]
+tests/test_fuzzer.py ................................                    [ 28%]
+tests/test_generator_exprs.py .........................................  [ 30%]
+tests/test_interpreter_booleans.py ..................................... [ 31%]
+...                                                                      [ 31%]
+tests/test_interpreter_enums.py ...............                          [ 31%]
+tests/test_interpreter_errors.py ....                                    [ 31%]
+tests/test_interpreter_integers.py ..................................... [ 33%]
+.................                                                        [ 33%]
+tests/test_interpreter_let.py ..............                             [ 34%]
+tests/test_interpreter_lists.py ........................................ [ 35%]
+...................................................................      [ 37%]
 tests/test_interpreter_map.py .......................................... [ 38%]
                                                                          [ 38%]
 tests/test_interpreter_quantifiers.py .............................      [ 39%]
 tests/test_interpreter_record.py .................................       [ 40%]
-tests/test_interpreter_sampling.py ..................................... [ 42%]
-..                                                                       [ 42%]
+tests/test_interpreter_sampling.py ..................................... [ 41%]
+..                                                                       [ 41%]
 tests/test_interpreter_sets.py ......................................... [ 43%]
-........................................................................ [ 46%]
-............................................                             [ 48%]
-tests/test_interpreter_state.py .............                            [ 48%]
-tests/test_interpreter_to_python.py .................................... [ 50%]
-.                                                                        [ 50%]
-tests/test_interpreter_tuple.py .......................                  [ 51%]
-tests/test_interpreter_unions.py ....................................    [ 52%]
-tests/test_interpreter_value_sort.py ................................... [ 53%]
-...........................................                              [ 55%]
-tests/test_is_empty.py .................                                 [ 56%]
-tests/test_lang_booleans.py ..................................           [ 57%]
-tests/test_lang_expr_decorator.py ............                           [ 58%]
-tests/test_lang_integers.py ............................................ [ 59%]
-.                                                                        [ 59%]
-tests/test_lang_lists.py ............................................... [ 61%]
-.....................................                                    [ 63%]
-tests/test_lang_literals.py ..............                               [ 63%]
-tests/test_lang_maps.py ....................................             [ 65%]
-tests/test_lang_record.py ................................               [ 66%]
-tests/test_lang_sets.py ................................................ [ 68%]
-........................................................................ [ 71%]
-................................................................         [ 73%]
-tests/test_lang_temporal.py ............................................ [ 75%]
-.........                                                                [ 75%]
-tests/test_lang_tuples.py ..........................                     [ 76%]
-tests/test_lang_unions.py ......................................         [ 78%]
-tests/test_linter.py ......................                              [ 79%]
-tests/test_machine_edit.py ...........................................   [ 80%]
-tests/test_model_checker.py ..............................               [ 82%]
-tests/test_permutation.py ..................                             [ 82%]
-tests/test_pretty_printing.py ....................................ss.... [ 84%]
-..s                                                                      [ 84%]
-tests/test_quint_convert.py ...............                              [ 85%]
-tests/test_quint_translation_manifest.py .....                           [ 85%]
-tests/test_random_walk_replay.py .....                                   [ 85%]
-tests/test_random_walk_seeds.py ....                                     [ 85%]
-tests/test_record_decorator.py ............                              [ 86%]
-tests/test_release_distribution.py .................                     [ 86%]
-tests/test_schedule_enumerator.py ...................                    [ 87%]
-tests/test_serialization.py ............................................ [ 89%]
-.....................                                                    [ 90%]
-tests/test_source_tracking.py .............                              [ 90%]
-tests/test_state_view.py ....................                            [ 91%]
-tests/test_sym_context.py ..................                             [ 92%]
-tests/test_tla.py ...................................................... [ 94%]
-........................................................................ [ 97%]
-.............................................                            [ 98%]
-tests/test_tlc_trace.py ....                                             [ 99%]
-tests/test_trace_output.py .........................                     [100%]
+........................................................................ [ 45%]
+............................................                             [ 46%]
+tests/test_interpreter_state.py .............                            [ 47%]
+tests/test_interpreter_to_python.py .................................... [ 48%]
+.                                                                        [ 48%]
+tests/test_interpreter_tuple.py .......................                  [ 49%]
+tests/test_interpreter_unions.py ....................................    [ 50%]
+tests/test_interpreter_value_sort.py ................................... [ 51%]
+...........................................                              [ 52%]
+tests/test_is_empty.py .................                                 [ 53%]
+tests/test_lang_booleans.py ..................................           [ 54%]
+tests/test_lang_expr_decorator.py ............                           [ 54%]
+tests/test_lang_integers.py ............................................ [ 56%]
+.                                                                        [ 56%]
+tests/test_lang_lists.py ............................................... [ 57%]
+.....................................                                    [ 58%]
+tests/test_lang_literals.py ..............                               [ 59%]
+tests/test_lang_maps.py ....................................             [ 60%]
+tests/test_lang_record.py ................................               [ 61%]
+tests/test_lang_sets.py ................................................ [ 62%]
+........................................................................ [ 65%]
+................................................................         [ 67%]
+tests/test_lang_temporal.py ............................................ [ 68%]
+.........                                                                [ 68%]
+tests/test_lang_tuples.py ..........................                     [ 69%]
+tests/test_lang_unions.py ......................................         [ 70%]
+tests/test_linter.py ......................                              [ 71%]
+tests/test_machine_edit.py ...........................................   [ 72%]
+tests/test_model_checker.py ..............................               [ 73%]
+tests/test_permutation.py ..................                             [ 74%]
+tests/test_pretty_printing.py ....................................ss.... [ 75%]
+..s                                                                      [ 75%]
+tests/test_quint_convert.py ...............                              [ 76%]
+tests/test_quint_translation_manifest.py .....                           [ 76%]
+tests/test_random_walk_replay.py .....                                   [ 76%]
+tests/test_random_walk_seeds.py ....                                     [ 76%]
+tests/test_record_decorator.py ............                              [ 77%]
+tests/test_release_distribution.py .................                     [ 77%]
+tests/test_schedule_enumerator.py ...................                    [ 78%]
+tests/test_source_tracking.py .............                              [ 78%]
+tests/test_state_view.py ....................                            [ 79%]
+tests/test_sym_context.py ..................                             [ 79%]
+tests/test_tla.py ...................................................... [ 81%]
+........................................................................ [ 83%]
+.............................................                            [ 85%]
+tests/test_tlc_trace.py ....                                             [ 85%]
+tests/test_trace_output.py .........................                     [ 86%]
+tests/transfer/test_ast_validation.py .................................. [ 87%]
+.....................................................                    [ 88%]
+tests/transfer/test_decode_strict.py ................................... [ 90%]
+.............                                                            [ 90%]
+tests/transfer/test_encode.py .                                          [ 90%]
+tests/transfer/test_roundtrip.py .                                       [ 90%]
+tests/transfer/test_schema.py .                                          [ 90%]
+tests/transfer/test_decode_strict.py .....                               [ 90%]
+tests/transfer/test_encode.py .                                          [ 90%]
+tests/transfer/test_roundtrip.py .                                       [ 90%]
+tests/transfer/test_schema.py .                                          [ 90%]
+tests/transfer/test_decode_strict.py .....                               [ 90%]
+tests/transfer/test_encode.py .                                          [ 90%]
+tests/transfer/test_roundtrip.py .                                       [ 91%]
+tests/transfer/test_schema.py .                                          [ 91%]
+tests/transfer/test_decode_strict.py .....                               [ 91%]
+tests/transfer/test_encode.py .                                          [ 91%]
+tests/transfer/test_roundtrip.py .                                       [ 91%]
+tests/transfer/test_schema.py .                                          [ 91%]
+tests/transfer/test_decode_strict.py .....                               [ 91%]
+tests/transfer/test_encode.py .                                          [ 91%]
+tests/transfer/test_roundtrip.py .                                       [ 91%]
+tests/transfer/test_schema.py .                                          [ 91%]
+tests/transfer/test_decode_strict.py .....                               [ 91%]
+tests/transfer/test_encode.py .                                          [ 91%]
+tests/transfer/test_roundtrip.py .                                       [ 91%]
+tests/transfer/test_schema.py .                                          [ 91%]
+tests/transfer/test_decode_strict.py .....                               [ 91%]
+tests/transfer/test_encode.py .                                          [ 92%]
+tests/transfer/test_roundtrip.py .                                       [ 92%]
+tests/transfer/test_schema.py .                                          [ 92%]
+tests/transfer/test_decode_strict.py .....                               [ 92%]
+tests/transfer/test_encode.py .                                          [ 92%]
+tests/transfer/test_roundtrip.py .                                       [ 92%]
+tests/transfer/test_schema.py .                                          [ 92%]
+tests/transfer/test_decode_strict.py .....                               [ 92%]
+tests/transfer/test_encode.py .                                          [ 92%]
+tests/transfer/test_roundtrip.py .                                       [ 92%]
+tests/transfer/test_schema.py .                                          [ 92%]
+tests/transfer/test_decode_strict.py .....                               [ 92%]
+tests/transfer/test_encode.py .                                          [ 92%]
+tests/transfer/test_roundtrip.py .                                       [ 92%]
+tests/transfer/test_schema.py .                                          [ 92%]
+tests/transfer/test_decode_strict.py .....                               [ 92%]
+tests/transfer/test_encode.py .                                          [ 93%]
+tests/transfer/test_roundtrip.py .                                       [ 93%]
+tests/transfer/test_schema.py .                                          [ 93%]
+tests/transfer/test_decode_strict.py .....                               [ 93%]
+tests/transfer/test_encode.py .                                          [ 93%]
+tests/transfer/test_roundtrip.py .                                       [ 93%]
+tests/transfer/test_schema.py .                                          [ 93%]
+tests/transfer/test_decode_strict.py .....                               [ 93%]
+tests/transfer/test_encode.py .                                          [ 93%]
+tests/transfer/test_roundtrip.py .                                       [ 93%]
+tests/transfer/test_schema.py .                                          [ 93%]
+tests/transfer/test_decode_strict.py .....                               [ 93%]
+tests/transfer/test_encode.py .                                          [ 93%]
+tests/transfer/test_roundtrip.py .                                       [ 93%]
+tests/transfer/test_schema.py .                                          [ 93%]
+tests/transfer/test_decode_strict.py .....                               [ 93%]
+tests/transfer/test_encode.py .                                          [ 94%]
+tests/transfer/test_roundtrip.py .                                       [ 94%]
+tests/transfer/test_schema.py .                                          [ 94%]
+tests/transfer/test_decode_strict.py .....                               [ 94%]
+tests/transfer/test_encode.py .                                          [ 94%]
+tests/transfer/test_roundtrip.py .                                       [ 94%]
+tests/transfer/test_schema.py .                                          [ 94%]
+tests/transfer/test_decode_strict.py .....                               [ 94%]
+tests/transfer/test_encode.py .                                          [ 94%]
+tests/transfer/test_roundtrip.py .                                       [ 94%]
+tests/transfer/test_schema.py .                                          [ 94%]
+tests/transfer/test_decode_strict.py .....                               [ 94%]
+tests/transfer/test_encode.py .                                          [ 94%]
+tests/transfer/test_roundtrip.py .                                       [ 94%]
+tests/transfer/test_schema.py .                                          [ 94%]
+tests/transfer/test_decode_strict.py .....                               [ 94%]
+tests/transfer/test_encode.py .                                          [ 95%]
+tests/transfer/test_roundtrip.py .                                       [ 95%]
+tests/transfer/test_schema.py .                                          [ 95%]
+tests/transfer/test_decode_strict.py .....                               [ 95%]
+tests/transfer/test_encode.py .                                          [ 95%]
+tests/transfer/test_roundtrip.py .                                       [ 95%]
+tests/transfer/test_schema.py .                                          [ 95%]
+tests/transfer/test_decode_strict.py .....                               [ 95%]
+tests/transfer/test_encode.py .                                          [ 95%]
+tests/transfer/test_roundtrip.py .                                       [ 95%]
+tests/transfer/test_schema.py .                                          [ 95%]
+tests/transfer/test_decode_strict.py .....                               [ 95%]
+tests/transfer/test_encode.py .                                          [ 95%]
+tests/transfer/test_roundtrip.py .                                       [ 95%]
+tests/transfer/test_schema.py .                                          [ 95%]
+tests/transfer/test_decode_strict.py .....                               [ 96%]
+tests/transfer/test_encode.py .                                          [ 96%]
+tests/transfer/test_roundtrip.py .                                       [ 96%]
+tests/transfer/test_schema.py .                                          [ 96%]
+tests/transfer/test_decode_strict.py ........                            [ 96%]
+tests/transfer/test_encode.py .......................................... [ 97%]
+...........................                                              [ 98%]
+tests/transfer/test_instance_values.py ....................              [ 99%]
+tests/transfer/test_instances.py ............                            [ 99%]
+tests/transfer/test_no_pickle.py .............                           [ 99%]
+tests/transfer/test_roundtrip.py .                                       [ 99%]
+tests/transfer/test_schema.py .                                          [100%]
 
 =============================== warnings summary ===============================
-tests/test_serialization.py::TestRoundTrip::test_lit_int
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:42: DeprecationWarning: save_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0).
-    restored = load_ast(save_ast(original))
-
-tests/test_serialization.py::TestRoundTrip::test_lit_int
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:42: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    restored = load_ast(save_ast(original))
-
-tests/test_serialization.py::TestRoundTrip::test_lit_bool
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:47: DeprecationWarning: save_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0).
-    restored = load_ast(save_ast(original))
-
-tests/test_serialization.py::TestRoundTrip::test_lit_bool
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:47: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    restored = load_ast(save_ast(original))
-
-tests/test_serialization.py::TestRoundTrip::test_var
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:52: DeprecationWarning: save_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0).
-    restored = load_ast(save_ast(original))
-
-tests/test_serialization.py::TestRoundTrip::test_var
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:52: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    restored = load_ast(save_ast(original))
-
-tests/test_serialization.py::TestRoundTrip::test_nested
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:57: DeprecationWarning: save_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0).
-    restored = load_ast(save_ast(original))
-
-tests/test_serialization.py::TestRoundTrip::test_nested
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:57: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    restored = load_ast(save_ast(original))
-
-tests/test_serialization.py::TestRestrictedUnpickler::test_rejects_os_module
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:68: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    load_ast(payload)
-
-tests/test_serialization.py::TestRestrictedUnpickler::test_rejects_non_node
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:74: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    load_ast(payload)
-
-tests/test_serialization.py::TestSecurityRegression::test_eval_reduce_has_no_side_effects[eval-3]
-tests/test_serialization.py::TestSecurityRegression::test_eval_reduce_has_no_side_effects[eval-4]
-tests/test_serialization.py::TestSecurityRegression::test_eval_reduce_has_no_side_effects[eval-5]
-tests/test_serialization.py::TestSecurityRegression::test_eval_reduce_has_no_side_effects[os-via-import-3]
-tests/test_serialization.py::TestSecurityRegression::test_eval_reduce_has_no_side_effects[os-via-import-4]
-tests/test_serialization.py::TestSecurityRegression::test_eval_reduce_has_no_side_effects[os-via-import-5]
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:103: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    load_ast(payload)
-
-tests/test_serialization.py::TestSecurityRegression::test_protocol_two_explicit_builtins_eval
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:123: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    load_ast(payload)
-
-tests/test_serialization.py::TestSecurityRegression::test_rejects_stdlib_reducers[namedtuple]
-tests/test_serialization.py::TestSecurityRegression::test_rejects_stdlib_reducers[defaultdict]
-tests/test_serialization.py::TestSecurityRegression::test_rejects_stdlib_reducers[enum-factory]
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:139: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    load_ast(payload)
-
-tests/test_serialization.py::TestSecurityRegression::test_rejects_non_ast_globals_in_ast_modules[wunderspec.ast.ast-Enum]
-tests/test_serialization.py::TestSecurityRegression::test_rejects_non_ast_globals_in_ast_modules[wunderspec.ast.sorts-sort_of]
-tests/test_serialization.py::TestSecurityRegression::test_rejects_non_ast_globals_in_ast_modules[wunderspec.ast.sorts-get_origin]
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:152: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    load_ast(payload)
-
-tests/test_serialization.py::TestSecurityRegression::test_cached_extension_cannot_bypass_allowlist[EXT1]
-tests/test_serialization.py::TestSecurityRegression::test_cached_extension_cannot_bypass_allowlist[EXT2]
-tests/test_serialization.py::TestSecurityRegression::test_cached_extension_cannot_bypass_allowlist[EXT4]
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:180: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    load_ast(payload)
-
-tests/test_serialization.py: 40 warnings
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:207: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    assert load_ast(pickle.dumps(node, protocol=protocol)) == node
-
-tests/test_serialization.py::TestCompatibility::test_source_span_roundtrip
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:212: DeprecationWarning: save_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0).
-    restored = load_ast(save_ast(original))
-
-tests/test_serialization.py::TestCompatibility::test_source_span_roundtrip
-  /home/runner/work/wunderspec-dev/wunderspec-dev/release-source/tests/test_serialization.py:212: DeprecationWarning: load_ast is deprecated; migrate to wunderspec.transfer (available in wunderspec 0.138.0). Load only files you produced yourself.
-    restored = load_ast(save_ast(original))
+tests/rust_cli/test_cache_robustness.py::test_concurrent_runs_submit_once
+tests/rust_cli/test_cache_robustness.py::test_concurrent_runs_submit_once
+tests/rust_cli/test_cache_robustness.py::test_eviction_skips_an_entry_in_use
+  /opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/multiprocessing/popen_fork.py:66: DeprecationWarning: This process (pid=2297) is multi-threaded, use of fork() may lead to deadlocks in the child.
+    self.pid = os.fork()
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-================ 2529 passed, 12 skipped, 68 warnings in 30.59s ================
+=========== 3164 passed, 12 skipped, 3 warnings in 351.82s (0:05:51) ===========
 ```

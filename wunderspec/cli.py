@@ -14,6 +14,7 @@ from typing import TextIO
 from wunderspec import api
 from wunderspec._edition import feature_message
 from wunderspec.exec import render_action_profile
+from wunderspec.rust_cli import commands as rust_commands
 from wunderspec.trace_output import DEFAULT_TRACE_WIDTH, TraceStyle, print_trace
 
 
@@ -527,6 +528,11 @@ def main() -> None:
         pass
 
     _maybe_reexec_runtime()
+
+    # `wunderspec rust` has its own commands (spec 005); hand over everything after
+    # `rust`, including --help, before the top-level parser sees it.
+    if len(sys.argv) > 1 and sys.argv[1] == "rust":
+        sys.exit(rust_commands.main(sys.argv[2:]))
 
     parser = argparse.ArgumentParser(
         prog="wunderspec",
@@ -1079,11 +1085,12 @@ def main() -> None:
         help="Write action read/write effects to the given text file",
     )
 
-    rust_parser = subparsers.add_parser(
+    subparsers.add_parser(
         "rust",
-        help="Translate a Wunderspec module to Rust (Premium)",
+        help="Translate to Rust on the Wunderspec service, then build and run the model "
+        "(see 'wunderspec rust --help')",
+        add_help=False,
     )
-    rust_parser.set_defaults(_stub=True)
 
     lean_parser = subparsers.add_parser(
         "lean",

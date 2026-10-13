@@ -1,6 +1,6 @@
 [project]
 name = "wunderspec"
-version = "0.137.3"
+version = "0.141.1"
 description = "Protocol specifications as Python code"
 authors = [
     {name = "Igor Konnov"},
@@ -41,6 +41,7 @@ dev = [
     "pytest>=8.0.0,<9.0.0",
     "pytest-codeblocks>=0.17.0,<0.18.0",
     "pytest-cov>=6.0.0,<7.0.0",
+    "jsonschema>=4.26,<5",
 ]
 demo = [
     "build>=1.2.2,<2.0.0",
@@ -54,6 +55,7 @@ default-groups = ["dev"]
 
 [tool.isort]
 profile = "black"
+skip_gitignore = true
 
 [tool.mypy]
 python_version = "3.11"
@@ -83,6 +85,12 @@ ignore_missing_imports = true
 # third-party dependency instead of failing with import-untyped.
 [[tool.mypy.overrides]]
 module = ["itf_py", "itf_py.*"]
+ignore_missing_imports = true
+
+# PyYAML ships no type information; the service configuration loader
+# (wunderspec/remote/config.py) uses only SafeLoader and YAMLError from it.
+[[tool.mypy.overrides]]
+module = ["yaml", "yaml.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
